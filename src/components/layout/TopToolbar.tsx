@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '@nanostores/react';
 import { CaretDown, Check, Sun, MagnifyingGlass, DownloadSimple } from '@phosphor-icons/react';
 import type { ExportOptions } from '../../engine/IconRenderer';
+import { exportIconDocument, importIconDocument, safeName } from '../../engine/IconDocument';
 import { BackgroundControls } from '../inspector/BackgroundControls';
 import {
-  $iconName, $iconModified, $background,
-  setIconName, bgColorsFromHueTint,
+  $iconName, $iconModified, $background, $layers,
+  setIconName, bgColorsFromHueTint, loadDocument,
 } from '../../store/iconStore';
 import {
   $lightAngle, $zoom, setLightAngle, setZoom, ZOOM_LEVELS,
@@ -25,6 +26,7 @@ const EXPORT_OPTIONS: ExportOptions[] = [
   { format: 'png',  size: 512 },
   { format: 'png',  size: 256 },
   { format: 'jpeg', size: 1024 },
+  { format: 'png',  size: 1024, bare: true },
   { format: 'png',  size: 1024, allModes: true },
 ];
 const FORMAT_LABEL: Record<ExportOptions['format'], string> = { png: 'PNG', jpeg: 'JPEG' };
@@ -33,6 +35,7 @@ type ToolbarPopover = 'background' | 'light' | 'zoom' | 'export';
 function exportLabel(opt: ExportOptions): string {
   if (opt.clipboard) return 'Copy PNG';
   if (opt.allModes)  return 'All Appearances';
+  if (opt.bare)      return 'PNG · No Chiclet';
   return `${FORMAT_LABEL[opt.format]}${opt.size === 4096 ? ' · 4K' : opt.size === 2048 ? ' · 2K' : ''}`;
 }
 
@@ -51,6 +54,7 @@ export function TopToolbar() {
   const zoomMenuRef   = useRef<HTMLDivElement>(null);
   const lightMenuRef  = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const openIconRef   = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!openPopover) return;
@@ -92,6 +96,33 @@ export function TopToolbar() {
     window.dispatchEvent(new CustomEvent<ExportOptions>('icon-export', { detail }));
     setOpenPopover(null);
     exportMenuRef.current?.querySelector('button')?.focus();
+  };
+
+  // ── Icon Composer document (.icon) ──
+  const exportIconFile = async () => {
+    setOpenPopover(null);
+    exportMenuRef.current?.querySelector('button')?.focus();
+    const blob = await exportIconDocument($iconName.get(), $layers.get(), $background.get())
+      .catch((err: unknown) => { console.error(err); return null; });
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeName($iconName.get())}.icon.zip`;
+    a.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const openIconFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      loadDocument(await importIconDocument(file, file.name));
+    } catch (err) {
+      console.error(err);
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const commitName = () => { setIconName(nameInput); setEditingName(false); };
@@ -323,7 +354,7 @@ export function TopToolbar() {
             <div id="export-menu" role="menu" aria-label="Export" className="editor-popover editor-menu right-0" onKeyDown={handleMenuKeyDown}>
               {EXPORT_OPTIONS.map((opt) => (
                 <button
-                  key={opt.clipboard ? 'clipboard' : opt.allModes ? 'zip' : `${opt.format}-${opt.size}`}
+                  key={opt.clipboard ? 'clipboard' : opt.allModes ? 'zip' : opt.bare ? 'bare' : `${opt.format}-${opt.size}`}
                   role="menuitem"
                   tabIndex={-1}
                   onClick={() => exportAs(opt)}
@@ -333,8 +364,22 @@ export function TopToolbar() {
                   <span className="editor-menu-detail">{opt.allModes ? 'ZIP' : `${opt.size} px`}</span>
                 </button>
               ))}
+              <button role="menuitem" tabIndex={-1} onClick={exportIconFile} className="editor-menu-item editor-menu-separated">
+                <span>Export .icon</span>
+                <span className="editor-menu-detail">ZIP</span>
+              </button>
+              <button
+                role="menuitem"
+                tabIndex={-1}
+                onClick={() => { openIconRef.current?.click(); setOpenPopover(null); }}
+                className="editor-menu-item"
+              >
+                <span>Open .icon…</span>
+                <span className="editor-menu-detail">ZIP</span>
+              </button>
             </div>
           )}
+          <input ref={openIconRef} type="file" accept=".zip" hidden onChange={openIconFile} />
         </div>
       </div>
     </header>

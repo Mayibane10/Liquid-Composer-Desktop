@@ -1,161 +1,83 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useStore } from '@nanostores/react';
-import { $layers, $background, addLayer, updateLayer } from '../../store/iconStore';
-import { $appearanceMode, $lightAngle, $zoom, $selectedLayerId, $hoveredLayerId, $webgl2Status, $webgl2Error, $webgl2Restores, selectLayer, stepZoom } from '../../store/uiStore';
+import { $layers, $background, updateLayer, setHistoryGesture } from '../../store/iconStore';
+import { $appearanceMode, $lightAngle, $zoom, $selectedLayerId, $hoveredLayerId, $webgl2Status, $webgl2Error, $webgl2Restores, $showGrid, $gridStyle, selectLayer, stepZoom } from '../../store/uiStore';
 import { renderIconToCanvas, exportIcon, exportZip, type ExportOptions } from '../../engine/IconRenderer';
 import { drawSquirclePath } from '../../engine/ImageProcessor';
+import { CHICLET_SHADOW } from '../../engine/glassContract';
+import { $fileDropZone } from '../useFileDrop';
 import { BottomBar } from '../layout/BottomBar';
+import { GridFour, CircleHalf } from '@phosphor-icons/react';
+import type { Layer } from '../../types/index';
 
 const ICON_BASE_SIZE = 750; // px at 100% zoom
 
-function useDragDrop() {
-  const [over, setOver] = useState(false);
+function IconShadow({ size }: { size: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const u = size / 1024;
+  const pad = Math.ceil((CHICLET_SHADOW.offsetY + 3 * CHICLET_SHADOW.radius) * u);
+  const side = size + 2 * pad;
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setOver(true);
-  }, []);
+  useEffect(() => {
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, side, side);
+    drawSquirclePath(ctx, pad - side, pad, size);
+    ctx.shadowColor = `rgba(0,0,0,${CHICLET_SHADOW.opacity})`;
+    ctx.shadowBlur = 2 * CHICLET_SHADOW.radius * u;
+    ctx.shadowOffsetX = side;
+    ctx.shadowOffsetY = CHICLET_SHADOW.offsetY * u;
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.globalCompositeOperation = 'destination-out';
+    drawSquirclePath(ctx, pad, pad, size);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }, [size, side, pad, u]);
 
-  const handleDragLeave = useCallback(() => setOver(false), []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setOver(false);
-    const files = Array.from(e.dataTransfer.files).filter(
-      (f) => f.type === 'image/svg+xml' || f.type === 'image/png' || f.type === 'image/jpeg'
-    );
-    files.forEach((file) => {
-      const url = URL.createObjectURL(file);
-      addLayer(url, file.name);
-    });
-  }, []);
-
-  return { over, handleDragOver, handleDragLeave, handleDrop };
-}
-
-function IconShadow({ size, mode }: { size: number; mode: string }) {
   return (
-    <div
+    <canvas
+      ref={canvasRef}
+      width={side}
+      height={side}
       className="absolute pointer-events-none"
-      style={{
-        width: size,
-        height: size,
-        top: 0,
-        left: 0,
-        filter: `drop-shadow(0 ${size * 0.04}px ${size * 0.1}px rgba(0,0,0,${mode === 'dark' ? 0.7 : 0.35}))`,
-        transform: 'translateZ(0)',
-      }}
-    >
-      <canvas
-        width={size}
-        height={size}
-        ref={(ref) => {
-          if (!ref) return;
-          const ctx = ref.getContext('2d')!;
-          ctx.clearRect(0, 0, size, size);
-          drawSquirclePath(ctx, 0, 0, size);
-          ctx.fillStyle = 'rgba(0,0,0,0.01)';
-          ctx.fill();
-        }}
-        style={{ width: size, height: size }}
-      />
-    </div>
+      style={{ left: -pad, top: -pad, width: side, height: side }}
+    />
   );
 }
 
-function SafeAreaOverlay({ size }: { size: number }) {
+function GridOverlay({ size, dark }: { size: number; dark: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const cv = canvasRef.current;
     if (!cv) return;
     const ctx = cv.getContext('2d')!;
+    const rgb = dark ? '0,0,0' : '255,255,255';
     ctx.clearRect(0, 0, size, size);
-
-    const color = 'rgba(255,255,255,0.35)';
-    const thinColor = 'rgba(255,255,255,0.20)';
-    ctx.strokeStyle = color;
     ctx.lineWidth = 1;
 
-    // Outer squircle boundary (full icon shape)
-    ctx.save();
-    ctx.strokeStyle = thinColor;
-    drawSquirclePath(ctx, 0, 0, size);
-    ctx.stroke();
-    ctx.restore();
-
-    // Inner safe area squircle (70% of canvas)
-    const safe = size * 0.7;
-    const safeOffset = (size - safe) / 2;
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.setLineDash([6, 4]);
-    drawSquirclePath(ctx, safeOffset, safeOffset, safe);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    // Center crosshair
-    const cx = size / 2;
-    const cy = size / 2;
-    const crossLen = size * 0.06;
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = `rgba(${rgb},0.20)`;
     ctx.beginPath();
-    ctx.moveTo(cx - crossLen, cy);
-    ctx.lineTo(cx + crossLen, cy);
-    ctx.moveTo(cx, cy - crossLen);
-    ctx.lineTo(cx, cy + crossLen);
-    ctx.stroke();
-    ctx.restore();
-
-    // Diagonal corner guides (from each corner toward center)
-    const diagLen = size * 0.08;
-    ctx.save();
-    ctx.strokeStyle = thinColor;
-    ctx.lineWidth = 1;
-    const corners = [
-      [0, 0, 1, 1],
-      [size, 0, -1, 1],
-      [0, size, 1, -1],
-      [size, size, -1, -1],
-    ];
-    for (const [x, y, dx, dy] of corners) {
-      ctx.beginPath();
-      ctx.moveTo(x + dx * size * 0.04, y + dy * size * 0.04);
-      ctx.lineTo(x + dx * (size * 0.04 + diagLen), y + dy * (size * 0.04 + diagLen));
-      ctx.stroke();
+    for (let i = 1; i < 8; i++) {
+      const p = (size * i) / 8;
+      ctx.moveTo(p, 0); ctx.lineTo(p, size);
+      ctx.moveTo(0, p); ctx.lineTo(size, p);
     }
-    ctx.restore();
+    ctx.moveTo(0, 0); ctx.lineTo(size, size);
+    ctx.moveTo(size, 0); ctx.lineTo(0, size);
+    ctx.stroke();
 
-    // Corner tick marks at safe area corners
-    const tickLen = size * 0.025;
-    const safeLeft = safeOffset;
-    const safeTop = safeOffset;
-    const safeRight = safeOffset + safe;
-    const safeBottom = safeOffset + safe;
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    // Top-left
+    const c = size / 2;
+    ctx.strokeStyle = `rgba(${rgb},0.35)`;
     ctx.beginPath();
-    ctx.moveTo(safeLeft, safeTop + tickLen); ctx.lineTo(safeLeft, safeTop); ctx.lineTo(safeLeft + tickLen, safeTop);
+    for (const r of [410, 256, 102]) {
+      const radius = (size * r) / 1024;
+      ctx.moveTo(c + radius, c);
+      ctx.arc(c, c, radius, 0, Math.PI * 2);
+    }
     ctx.stroke();
-    // Top-right
-    ctx.beginPath();
-    ctx.moveTo(safeRight - tickLen, safeTop); ctx.lineTo(safeRight, safeTop); ctx.lineTo(safeRight, safeTop + tickLen);
-    ctx.stroke();
-    // Bottom-left
-    ctx.beginPath();
-    ctx.moveTo(safeLeft, safeBottom - tickLen); ctx.lineTo(safeLeft, safeBottom); ctx.lineTo(safeLeft + tickLen, safeBottom);
-    ctx.stroke();
-    // Bottom-right
-    ctx.beginPath();
-    ctx.moveTo(safeRight - tickLen, safeBottom); ctx.lineTo(safeRight, safeBottom); ctx.lineTo(safeRight, safeBottom - tickLen);
-    ctx.stroke();
-    ctx.restore();
-  }, [size]);
+  }, [size, dark]);
 
   return (
     <canvas
@@ -164,9 +86,59 @@ function SafeAreaOverlay({ size }: { size: number }) {
       height={size}
       className="absolute pointer-events-none z-10"
       style={{ width: size, height: size, top: 0, left: 0 }}
-      title="Safe area: keep essential shapes within this boundary (Apple HIG)"
     />
   );
+}
+
+// ── Hit test ──
+const HIT_SIZE = 64; // px
+const hitImages = new Map<string, Promise<HTMLImageElement>>();
+const hitMasks = new Map<string, Uint8ClampedArray>();
+let hitCtx: CanvasRenderingContext2D | null = null;
+
+function loadHitImage(url: string): Promise<HTMLImageElement> {
+  let pending = hitImages.get(url);
+  if (!pending) {
+    pending = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+    hitImages.set(url, pending);
+    pending.catch(() => hitImages.delete(url));
+    if (hitImages.size > 32) hitImages.delete(hitImages.keys().next().value!);
+  }
+  return pending;
+}
+
+async function getHitMask(url: string, layout: { x: number; y: number; scale: number }): Promise<Uint8ClampedArray> {
+  const key = `${url}:${layout.x}:${layout.y}:${layout.scale}`;
+  const cached = hitMasks.get(key);
+  if (cached) return cached;
+  const img = await loadHitImage(url);
+  const sz = HIT_SIZE;
+  if (!hitCtx) {
+    const oc = document.createElement('canvas');
+    oc.width = oc.height = sz;
+    hitCtx = oc.getContext('2d', { willReadFrequently: true })!;
+  }
+  const ox = hitCtx;
+  ox.setTransform(1, 0, 0, 1, 0, 0);
+  ox.clearRect(0, 0, sz, sz);
+  const scale = layout.scale / 100;
+  const tx = layout.x / 100;
+  const ty = layout.y / 100;
+  ox.translate(sz / 2 + tx * sz, sz / 2 + ty * sz);
+  ox.scale(scale, scale);
+  ox.translate(-sz / 2, -sz / 2);
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const sc = Math.min(sz / iw, sz / ih);
+  ox.drawImage(img, (sz - iw * sc) / 2, (sz - ih * sc) / 2, iw * sc, ih * sc);
+  const data = ox.getImageData(0, 0, sz, sz).data;
+  hitMasks.set(key, data);
+  if (hitMasks.size > 64) hitMasks.delete(hitMasks.keys().next().value!);
+  return data;
 }
 
 export function IconCanvas() {
@@ -181,9 +153,10 @@ export function IconCanvas() {
   const webgl2Status = useStore($webgl2Status);
   const webgl2Error = useStore($webgl2Error);
   const webgl2Restores = useStore($webgl2Restores);
-  const [showSafeArea, setShowSafeArea] = useState(false);
+  const showGrid = useStore($showGrid);
+  const gridStyle = useStore($gridStyle);
   const [snapGuide, setSnapGuide] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
-  const { over, handleDragOver, handleDragLeave, handleDrop } = useDragDrop();
+  const over = useStore($fileDropZone) === 'canvas';
 
   const dragState = useRef<{
     layerId: string;
@@ -194,6 +167,7 @@ export function IconCanvas() {
     rafId: number;
     pendingX: number;
     pendingY: number;
+    moved?: boolean;
   } | null>(null);
 
   const iconSize = Math.round(ICON_BASE_SIZE * (zoom / 100));
@@ -267,32 +241,12 @@ export function IconCanvas() {
 
   const hitTestLayer = useCallback(async (layer: { blobUrl?: string; layout: { x: number; y: number; scale: number } }, nx: number, ny: number): Promise<boolean> => {
     if (!layer.blobUrl) return false;
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const sz = 64;
-          const oc = document.createElement('canvas');
-          oc.width = oc.height = sz;
-          const ox = oc.getContext('2d')!;
-          const scale = layer.layout.scale / 100;
-          const tx = layer.layout.x / 100;
-          const ty = layer.layout.y / 100;
-          ox.translate(sz / 2 + tx * sz, sz / 2 + ty * sz);
-          ox.scale(scale, scale);
-          ox.translate(-sz / 2, -sz / 2);
-          const iw = img.naturalWidth, ih = img.naturalHeight;
-          const sc = Math.min(sz / iw, sz / ih);
-          ox.drawImage(img, (sz - iw * sc) / 2, (sz - ih * sc) / 2, iw * sc, ih * sc);
-          const px = Math.round(nx * sz);
-          const py = Math.round(ny * sz);
-          const data = ox.getImageData(Math.max(0, Math.min(sz - 1, px)), Math.max(0, Math.min(sz - 1, py)), 1, 1).data;
-          resolve(data[3] > 10);
-        } catch { resolve(false); }
-      };
-      img.onerror = () => resolve(false);
-      img.src = layer.blobUrl!;
-    });
+    try {
+      const data = await getHitMask(layer.blobUrl, layer.layout);
+      const px = Math.max(0, Math.min(HIT_SIZE - 1, Math.round(nx * HIT_SIZE)));
+      const py = Math.max(0, Math.min(HIT_SIZE - 1, Math.round(ny * HIT_SIZE)));
+      return data[(py * HIT_SIZE + px) * 4 + 3] > 10;
+    } catch { return false; }
   }, []);
 
   const handleCanvasPointerDown = useCallback(async (e: React.PointerEvent<HTMLDivElement>) => {
@@ -359,7 +313,11 @@ export function IconCanvas() {
   const hoverRafRef = useRef(0);
   const iconAreaRef = useRef<HTMLDivElement>(null);
   const handleCanvasPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragState.current && !(e.buttons & 1)) dragState.current = null;
+    if (dragState.current && !(e.buttons & 1)) {
+      dragState.current = null;
+      setSnapGuide({ x: false, y: false });
+      setHistoryGesture(false);
+    }
     if (!dragState.current) {
       if (hoverRafRef.current) return; // already pending
       const clientX = e.clientX;
@@ -384,10 +342,18 @@ export function IconCanvas() {
       return;
     }
     const ds = dragState.current;
+    if (!ds.moved) {
+      if (Math.hypot(e.clientX - ds.startX, e.clientY - ds.startY) < 3) return; // px
+      ds.moved = true;
+    }
     // Convert pixel delta → layout units (percent of icon size)
     const SNAP_THRESHOLD = 8; // px
     let dx = ((e.clientX - ds.startX) / iconSize) * 100;
     let dy = ((e.clientY - ds.startY) / iconSize) * 100;
+    const lockX = e.shiftKey && Math.abs(dy) > Math.abs(dx);
+    const lockY = e.shiftKey && !lockX;
+    if (lockX) dx = 0;
+    if (lockY) dy = 0;
     let newX = ds.origX + dx;
     let newY = ds.origY + dy;
 
@@ -396,7 +362,7 @@ export function IconCanvas() {
     if (snapX) newX = 0;
     if (snapY) newY = 0;
 
-    setSnapGuide({ x: snapX, y: snapY });
+    setSnapGuide((prev) => (prev.x === snapX && prev.y === snapY ? prev : { x: snapX, y: snapY }));
     ds.pendingX = newX;
     ds.pendingY = newY;
 
@@ -414,6 +380,7 @@ export function IconCanvas() {
         const dragged = layers.find((l) => l.id === dragState.current!.layerId);
         if (!dragged) return;
         updateLayer(dragged.id, { layout: { ...dragged.layout, x: dragState.current.pendingX, y: dragState.current.pendingY } });
+        setHistoryGesture(true);
       });
     }
   }, [layers, iconSize]);
@@ -421,31 +388,15 @@ export function IconCanvas() {
   const handleCanvasPointerUp = useCallback(() => {
     dragState.current = null;
     setSnapGuide({ x: false, y: false });
+    setHistoryGesture(false);
   }, []);
 
-  const bgStyle = (() => {
-    if (mode === 'clear') {
-      return {
-        backgroundColor: '#1e1e1e',
-        backgroundImage: [
-          'linear-gradient(45deg,#2e2e2e 25%,transparent 25%)',
-          'linear-gradient(-45deg,#2e2e2e 25%,transparent 25%)',
-          'linear-gradient(45deg,transparent 75%,#2e2e2e 75%)',
-          'linear-gradient(-45deg,transparent 75%,#2e2e2e 75%)',
-        ].join(','),
-        backgroundSize: '18px 18px',
-        backgroundPosition: '0 0,0 9px,9px -9px,-9px 0px',
-      };
-    }
-    return { background: '#171719' };
-  })();
+  const bgStyle = { background: '#171719' };
 
   return (
     <div
       className="icon-workspace flex-1 min-w-0 flex items-center justify-center relative overflow-hidden"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      data-file-drop="canvas"
       onPointerDown={(e) => {
         if (e.target === e.currentTarget || !(e.target as HTMLElement).closest('[data-icon-area]')) {
           selectLayer(null);
@@ -464,7 +415,7 @@ export function IconCanvas() {
 
 
       {over && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0a84ff]/20 border-4 border-[#0a84ff] border-dashed">
+        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none bg-[#0a84ff]/20 border-4 border-[#0a84ff] border-dashed">
           <div className="text-white font-medium text-lg">Drop image to add layer</div>
         </div>
       )}
@@ -486,7 +437,7 @@ export function IconCanvas() {
         onPointerUp={handleCanvasPointerUp}
         onPointerLeave={() => { if (!dragState.current) $hoveredLayerId.set(null); }}
       >
-        <IconShadow size={iconSize} mode={mode} />
+        <IconShadow size={iconSize} />
         <canvas
           ref={canvasRef}
           width={renderSize}
@@ -496,34 +447,40 @@ export function IconCanvas() {
             height: iconSize,
             position: 'relative',
             zIndex: 1,
-            borderRadius: '22.5%',
+            borderRadius: '26%',
           }}
           className="block"
         />
-        {showSafeArea && <SafeAreaOverlay size={iconSize} />}
+        {showGrid && <GridOverlay size={iconSize} dark={gridStyle === 'dark'} />}
 
         {(() => {
           const outlineId = hoveredLayerId ?? selectedLayerId;
           const outlineLayer = outlineId ? layers.find((l) => l.id === outlineId) : null;
           if (!outlineLayer?.blobUrl) return null;
           const isHover = outlineId === hoveredLayerId && outlineId !== selectedLayerId;
+          const k = 100 / outlineLayer.layout.scale;
+          const gap = Math.max(1, iconSize * 4 / 1024) * k; // 4 pt of the 1024 pt canvas
+          const band = (isHover ? 3 : 6) * k; // screen px
           return (
             <>
               <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
                 <defs>
-                  <filter id="layer-outline-selected" x="-10%" y="-10%" width="120%" height="120%">
-                    <feMorphology operator="dilate" radius="7" in="SourceAlpha" result="outer" />
-                    <feMorphology operator="dilate" radius="2" in="SourceAlpha" result="inner" />
+                  <filter id="layer-outline" x="-10%" y="-10%" width="120%" height="120%">
+                    <feMorphology operator="dilate" radius={gap - k} in="SourceAlpha" result="haloIn" />
+                    <feMorphology operator="dilate" radius={gap} in="SourceAlpha" result="inner" />
+                    <feMorphology operator="dilate" radius={gap + band} in="SourceAlpha" result="outer" />
+                    <feMorphology operator="dilate" radius={gap + band + k} in="SourceAlpha" result="haloOut" />
                     <feComposite in="outer" in2="inner" operator="out" result="ring" />
-                    <feFlood floodColor="#0a84ff" floodOpacity="1" result="color" />
-                    <feComposite in="color" in2="ring" operator="in" />
-                  </filter>
-                  <filter id="layer-outline-hover" x="-10%" y="-10%" width="120%" height="120%">
-                    <feMorphology operator="dilate" radius="7" in="SourceAlpha" result="outer" />
-                    <feMorphology operator="dilate" radius="2" in="SourceAlpha" result="inner" />
-                    <feComposite in="outer" in2="inner" operator="out" result="ring" />
-                    <feFlood floodColor="#ffffff" floodOpacity="0.5" result="color" />
-                    <feComposite in="color" in2="ring" operator="in" />
+                    <feComposite in="haloOut" in2="haloIn" operator="out" result="halo" />
+                    <feComposite in="halo" in2="ring" operator="out" result="edge" />
+                    <feFlood floodColor="#000000" floodOpacity="0.3" />
+                    <feComposite in2="edge" operator="in" result="edgeColor" />
+                    <feFlood floodColor="#0a84ff" floodOpacity={isHover ? 0.667 : 1} />
+                    <feComposite in2="ring" operator="in" />
+                    <feMerge>
+                      <feMergeNode in="edgeColor" />
+                      <feMergeNode />
+                    </feMerge>
                   </filter>
                 </defs>
               </svg>
@@ -537,7 +494,7 @@ export function IconCanvas() {
                   width: iconSize,
                   height: iconSize,
                   objectFit: 'contain',
-                  filter: `url(#${isHover ? 'layer-outline-hover' : 'layer-outline-selected'})`,
+                  filter: 'url(#layer-outline)',
                   pointerEvents: 'none',
                   zIndex: 2,
                   opacity: outlineLayer.opacity / 100,
@@ -551,20 +508,31 @@ export function IconCanvas() {
 
       <div className="canvas-controls" onPointerDown={(e) => e.stopPropagation()}>
         <BottomBar />
-        <button
-          type="button"
-          aria-pressed={showSafeArea}
-          onClick={() => setShowSafeArea((s) => !s)}
-          title="Toggle safe area guide (Apple HIG 70%)"
-          className="canvas-guide-button"
-        >
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"
-            />
-          </svg>
-          Safe area
-        </button>
+        <div className="appearance-segments" role="group" aria-label="Icon grid">
+          <button
+            type="button"
+            aria-pressed={showGrid}
+            onClick={() => $showGrid.set(!showGrid)}
+            title="Toggle icon grid"
+          >
+            <GridFour size={12} />
+            Grid
+          </button>
+          {showGrid && (
+            <>
+              <span className="segment-divider" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => $gridStyle.set(gridStyle === 'light' ? 'dark' : 'light')}
+                title="Grid style"
+                aria-label={`Grid style: ${gridStyle}`}
+              >
+                <CircleHalf size={12} />
+                {gridStyle === 'light' ? 'Light' : 'Dark'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

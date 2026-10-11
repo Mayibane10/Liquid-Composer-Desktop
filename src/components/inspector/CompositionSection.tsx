@@ -75,8 +75,8 @@ export function CompositionSection() {
                 label="Scale"
                 value={layout.scale}
                 onChange={(v) => updateLayer(layer.id, { layout: { ...layout, scale: v } })}
-                min={10}
-                max={200}
+                min={1}
+                max={400}
                 unit="%"
               />
             </div>

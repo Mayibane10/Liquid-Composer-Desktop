@@ -22,6 +22,7 @@ const BLEND_MODES: { value: BlendMode; label: string }[] = [
   { value: 'soft-light', label: 'Soft Light' },
   { value: 'difference', label: 'Difference' },
   { value: 'exclusion', label: 'Exclusion' },
+  { value: 'plus-lighter', label: 'Plus Lighter' },
 ];
 
 function GroupColorSection() {

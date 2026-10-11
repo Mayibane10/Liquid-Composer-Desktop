@@ -3,43 +3,38 @@ import { CaretDown, ArrowCounterClockwise, SlidersHorizontal } from '@phosphor-i
 import { $layers, updateLayerLiquidGlass, updateAllLayersLiquidGlass } from '../../store/iconStore';
 import { $selectedLayerId, $showAdvancedGlass } from '../../store/uiStore';
 import { DEFAULT_EFFECTS } from '../../engine/IconRenderer';
+import { MATERIAL } from '../../engine/glassContract';
 import type { LayerEffects } from '../../types/index';
 import { Toggle } from '../ui/Toggle';
 import { Slider } from '../ui/Slider';
+import { Select } from '../ui/Select';
 
 type Adjustment = { enabled: boolean; value: number };
 
-type EffectControl = { key: keyof LayerEffects; label: string; max?: number; step?: number };
-const EFFECT_GROUPS: { title: string; description: string; controls: EffectControl[] }[] = [
-  { title: 'Reflections', description: 'Light along the glass surface.', controls: [
-    { key: 'specularEdge', label: 'Edge highlight' },
-    { key: 'rimIntensity', label: 'Fresnel rim' },
-    { key: 'envReflection', label: 'Environment' },
-    { key: 'innerGlow', label: 'Inner glow' },
-    { key: 'ambientRim', label: 'Ambient rim' },
-  ] },
-  { title: 'Surface', description: 'Softness and light within the glass.', controls: [
-    { key: 'frostiness', label: 'Frostiness' },
-    { key: 'aoDarken', label: 'Ambient light' },
-    { key: 'domeIntensity', label: 'Dome light' },
-    { key: 'domeRadius', label: 'Radius' },
-  ] },
-  { title: 'Inner rim', description: 'A fine highlight inside the silhouette.', controls: [
-    { key: 'innerRimWidth', label: 'Width', max: 6, step: 0.1 },
-    { key: 'innerRimLitAlpha', label: 'Light side' },
-    { key: 'innerRimShadowAlpha', label: 'Shadow side' },
-  ] },
-  { title: 'Inner shadow', description: 'Depth along the shaded edge.', controls: [
-    { key: 'innerShadowWidth', label: 'Width', max: 5, step: 0.1 },
-    { key: 'innerShadowAlpha', label: 'Opacity' },
-  ] },
-  { title: 'Outer border', description: 'Definition around the outer edge.', controls: [
-    { key: 'outerBorderWidth', label: 'Width', max: 2, step: 0.05 },
-    { key: 'outerBorderAlpha', label: 'Opacity' },
-  ] },
+const SPECULAR_OPTIONS = [
+  { value: 'off', label: 'Off' },
+  { value: 'automatic', label: 'Automatic' },
+  { value: 'inside', label: 'Inside' },
+  { value: 'outside', label: 'Outside' },
 ];
 
-function AdjustmentRow({ label, adjustment, onChange }: { label: string; adjustment: Adjustment; onChange: (a: Adjustment) => void }) {
+type EffectControl = { key: keyof LayerEffects; label: string };
+const EFFECT_GROUPS: { title: string; description: string; controls: EffectControl[] }[] = [
+  { title: 'Highlights', description: 'Light and dark edges along the glass.', controls: [
+    { key: 'keyHighlight', label: 'Top' },
+    { key: 'fillHighlight', label: 'Bottom' },
+    { key: 'darklight', label: 'Edge definition' },
+  ] },
+  { title: 'Surface', description: 'Softness within the glass.', controls: [
+    { key: 'frostiness', label: 'Frostiness' },
+  ] },
+];
+const ADVANCED_RESET: Partial<LayerEffects> = { keyHighlight: 100, fillHighlight: 100, darklight: 100, frostiness: 0 };
+
+const toHeight = (bevel: number) => Math.round(Math.min(100, Math.max(0, (bevel * 1024 / 100 - MATERIAL.heightMin) / MATERIAL.heightRange * 100)) * 10) / 10;
+const toBevel = (height: number) => (MATERIAL.heightMin + MATERIAL.heightRange * height / 100) / 1024 * 100;
+
+function AdjustmentRow({ label, adjustment, onChange, max = 100 }: { label: string; adjustment: Adjustment; onChange: (a: Adjustment) => void; max?: number }) {
   return (
     <div className="glass-setting-row">
       <div className="flex items-center justify-between gap-3 min-h-8">
@@ -47,7 +42,7 @@ function AdjustmentRow({ label, adjustment, onChange }: { label: string; adjustm
         <Toggle ariaLabel={label} checked={adjustment.enabled} onChange={(v) => onChange({ ...adjustment, enabled: v })} />
       </div>
       {adjustment.enabled && (
-        <Slider ariaLabel={label} layout="stacked" value={adjustment.value} onChange={(v) => onChange({ ...adjustment, value: v })} min={0} max={100} />
+        <Slider ariaLabel={label} layout="stacked" value={adjustment.value} onChange={(v) => onChange({ ...adjustment, value: v })} min={0} max={max} />
       )}
     </div>
   );
@@ -68,11 +63,13 @@ export function LiquidGlassSection() {
       ? updateAllLayersLiquidGlass(partial)
       : updateLayerLiquidGlass(layer.id, partial);
   const setEffect = (key: keyof LayerEffects, value: number) => update({ effects: { [key]: value } });
+  const refractionOn = lg.refraction?.enabled !== false;
   const targets = lg.mode === 'all' ? layers : [layer];
-  const canReset = targets.some(({ liquidGlass: glass }) =>
-    (glass.aberration ?? 20) !== 20 || (glass.specularIntensity ?? 100) !== 100 ||
-    Object.entries(glass.effects ?? {}).some(([key, value]) => value !== DEFAULT_EFFECTS[key as keyof LayerEffects])
-  );
+  const canReset = targets.some(({ liquidGlass: glass }) => {
+    const effects = { ...DEFAULT_EFFECTS, ...glass.effects };
+    return (glass.aberration ?? 0) !== 0 || (glass.specularIntensity ?? 100) !== 100 ||
+      Object.entries(ADVANCED_RESET).some(([key, value]) => effects[key as keyof LayerEffects] !== value);
+  });
 
   return (
     <div className="glass-settings border-b border-white/[0.07] pb-5">
@@ -82,7 +79,7 @@ export function LiquidGlassSection() {
           <Toggle ariaLabel="Liquid Glass" checked={lg.enabled} onChange={(v) => update({ enabled: v })} />
         </div>
         <span className="text-2xs text-[#636366] bg-white/[0.07] px-1.5 py-0.5 rounded">
-          {lg.mode === 'all' ? 'All' : 'Individual'}
+          {lg.mode === 'all' ? 'All layers' : 'This layer'}
         </span>
       </div>
 
@@ -107,10 +104,29 @@ export function LiquidGlassSection() {
           <div className="glass-setting-group">
             <div className="glass-setting-row flex items-center justify-between gap-3 min-h-9">
               <span className="text-xs text-[#d1d1d6]">Specular</span>
-              <Toggle ariaLabel="Specular" checked={lg.specular} onChange={(v) => update({ specular: v })} />
+              <Select
+                ariaLabel="Specular"
+                className="w-28"
+                value={lg.specular === false ? 'off' : lg.specular === true ? 'automatic' : lg.specular}
+                options={SPECULAR_OPTIONS}
+                onChange={(v) => update({ specular: v === 'off' ? false : v === 'automatic' ? true : v as 'inside' | 'outside' })}
+              />
             </div>
+            <div className="glass-setting-row">
+              <div className="flex items-center justify-between gap-3 min-h-8">
+                <span className="text-xs text-[#d1d1d6]">Refraction</span>
+                <Toggle ariaLabel="Refraction" checked={refractionOn} onChange={(v) => update({ refraction: { enabled: v } })} />
+              </div>
+              {refractionOn && (
+                <>
+                  <Slider layout="stacked" label="Strength" value={fx.refraction} onChange={(v) => setEffect('refraction', v)} min={-100} max={100} />
+                  <Slider layout="stacked" label="Height" value={toHeight(fx.bevel)} onChange={(v) => setEffect('bevel', toBevel(v))} min={0} max={100} />
+                </>
+              )}
+            </div>
+            <AdjustmentRow label="Blur" adjustment={lg.blur} onChange={(a) => update({ blur: a })} />
             <AdjustmentRow label="Translucency" adjustment={lg.translucency} onChange={(a) => update({ translucency: a })} />
-            <AdjustmentRow label="Shadow" adjustment={lg.shadow} onChange={(a) => update({ shadow: { ...lg.shadow, ...a } })} />
+            <AdjustmentRow label="Shadow" adjustment={lg.shadow} onChange={(a) => update({ shadow: { ...lg.shadow, ...a } })} max={200} />
           </div>
 
           <div className="glass-advanced-header">
@@ -128,7 +144,7 @@ export function LiquidGlassSection() {
             {showAdvanced && (
               <button
                 type="button"
-                onClick={() => update({ effects: undefined, aberration: 20, specularIntensity: 100 })}
+                onClick={() => update({ effects: ADVANCED_RESET, aberration: 0, specularIntensity: 100 })}
                 disabled={!canReset}
                 aria-label="Reset advanced glass settings"
                 title="Reset advanced settings"
@@ -144,10 +160,8 @@ export function LiquidGlassSection() {
               <details className="glass-setting-group" open>
                 <summary className="glass-group-summary">Lens<CaretDown size={11} aria-hidden="true" /></summary>
                 <div className="glass-group-controls">
-                  <p className="glass-setting-caption">Shape how the glass bends the layers below.</p>
-                  <Slider layout="stacked" label="Depth" value={fx.bevel} onChange={(v) => setEffect('bevel', v)} min={0} max={20} step={0.5} />
-                  <Slider layout="stacked" label="Refraction" value={fx.refraction} onChange={(v) => setEffect('refraction', v)} min={0} max={100} />
-                  <Slider layout="stacked" label="Dispersion" value={lg.aberration ?? 20} onChange={(v) => update({ aberration: v })} min={0} max={100} />
+                  <p className="glass-setting-caption">Color split where the glass bends the layers below.</p>
+                  <Slider layout="stacked" label="Dispersion" disabled={!refractionOn} value={lg.aberration ?? 0} onChange={(v) => update({ aberration: v })} min={0} max={100} />
                 </div>
               </details>
 
@@ -156,7 +170,7 @@ export function LiquidGlassSection() {
                   <summary className="glass-group-summary">{group.title}<CaretDown size={11} aria-hidden="true" /></summary>
                   <div className="glass-group-controls">
                     <p className="glass-setting-caption">{group.description}</p>
-                    {group.title === 'Reflections' && (
+                    {group.title === 'Highlights' && (
                       <Slider layout="stacked" label="Light intensity" disabled={!lg.specular} value={lg.specularIntensity ?? 100} onChange={(v) => update({ specularIntensity: v })} />
                     )}
                     {group.controls.map((c) => (
@@ -165,11 +179,11 @@ export function LiquidGlassSection() {
                         layout="stacked"
                         label={c.label}
                         ariaLabel={`${group.title}: ${c.label}`}
+                        disabled={group.title === 'Highlights' && !lg.specular}
                         value={fx[c.key]}
                         onChange={(v) => setEffect(c.key, v)}
                         min={0}
-                        max={c.max ?? 100}
-                        step={c.step ?? 1}
+                        max={100}
                       />
                     ))}
                   </div>

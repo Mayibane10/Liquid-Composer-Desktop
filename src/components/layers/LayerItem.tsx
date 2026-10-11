@@ -1,20 +1,63 @@
-import { useState, useRef, useEffect, type DragEvent as ReactDragEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, type PointerEvent as ReactPointerEvent } from 'react';
 import { useStore } from '@nanostores/react';
 import { $selectedLayerId, $hoveredLayerId, selectLayer } from '../../store/uiStore';
-import { removeLayer, toggleLayerVisibility, toggleGroupCollapsed, updateLayer } from '../../store/iconStore';
-import type { Layer } from '../../types/index';
-import { CaretRight, Eye, EyeSlash, Trash, Folder, Image } from '@phosphor-icons/react';
+import {
+  $layers,
+  removeLayer,
+  duplicateLayer,
+  toggleLayerVisibility,
+  toggleGroupCollapsed,
+  updateLayer,
+  arrangeLayer,
+  copyLayer,
+  cutLayer,
+  pasteLayers,
+  copiedLayerMarker,
+  copyLayerStyle,
+  pasteLayerStyle,
+} from '../../store/iconStore';
+import type { CSSProperties } from 'react';
+import type { FillConfig, Layer } from '../../types/index';
+import { CaretRight, Eye, EyeSlash, Stack, Image, Copy, X } from '@phosphor-icons/react';
+import { LayerMenu, type MenuEntry } from './LayerMenu';
+import { LAYER_INDENT } from './useLayerDrag';
 
 interface LayerItemProps {
   layer: Layer;
   depth?: number;
   isDragging?: boolean;
   isInsideTarget?: boolean;
-  dropEdge?: 'before' | 'after' | null;
-  onDragStart?: (id: string) => void;
-  onDragEnd?: () => void;
-  onDragOver?: (e: ReactDragEvent<HTMLDivElement>) => void;
-  onDrop?: (e: ReactDragEvent<HTMLDivElement>) => void;
+  onPointerDown?: (e: ReactPointerEvent<HTMLDivElement>, id: string) => void;
+}
+
+function thumbFill(url: string, fill: Exclude<FillConfig, { type: 'none' }>): CSSProperties {
+  const mask = `url("${url}") center / contain no-repeat`;
+  const background = fill.type === 'solid'
+    ? fill.color
+    : `linear-gradient(to bottom, ${fill.stops.map((s) => `${s.color} ${s.offset * 100}%`).join(', ')})`;
+  return { background, mask, WebkitMask: mask };
+}
+
+function menuEntries(layer: Layer, rename: () => void): MenuEntry[] {
+  const siblings = $layers.get().filter((l) => l.parentId === layer.parentId).sort((a, b) => b.order - a.order);
+  const index = siblings.findIndex((l) => l.id === layer.id);
+  const toClipboard = (marker: string | null) => { if (marker) navigator.clipboard?.writeText(marker).catch(() => {}); };
+  return [
+    { label: 'Rename', onSelect: rename },
+    { label: layer.visible ? 'Hide' : 'Show', onSelect: () => toggleLayerVisibility(layer.id) },
+    { label: 'Cut', separated: true, onSelect: () => { toClipboard(cutLayer(layer.id)); selectLayer(null); } },
+    { label: 'Copy', onSelect: () => toClipboard(copyLayer(layer.id)) },
+    { label: 'Paste', disabled: !copiedLayerMarker(), onSelect: () => { pasteLayers().catch(console.error); } },
+    { label: 'Duplicate', onSelect: () => { duplicateLayer(layer.id).catch(console.error); } },
+    { label: 'Copy Style', separated: true, onSelect: () => copyLayerStyle(layer.id) },
+    { label: 'Paste Style', onSelect: () => { pasteLayerStyle(layer.id); } },
+    { label: 'Bring to Front', separated: true, disabled: index <= 0, onSelect: () => arrangeLayer(layer.id, 'front') },
+    { label: 'Bring Forward', disabled: index <= 0, onSelect: () => arrangeLayer(layer.id, 'forward') },
+    { label: 'Send Backward', disabled: index >= siblings.length - 1, onSelect: () => arrangeLayer(layer.id, 'backward') },
+    { label: 'Send to Back', disabled: index >= siblings.length - 1, onSelect: () => arrangeLayer(layer.id, 'back') },
+    ...(layer.parentId ? [{ label: 'Select Parent', separated: true, onSelect: () => selectLayer(layer.parentId) }] : []),
+    { label: 'Delete', separated: true, danger: true, onSelect: () => { removeLayer(layer.id); selectLayer(null); } },
+  ];
 }
 
 export function LayerItem({
@@ -22,11 +65,7 @@ export function LayerItem({
   depth = 0,
   isDragging = false,
   isInsideTarget = false,
-  dropEdge = null,
-  onDragStart,
-  onDragEnd,
-  onDragOver,
-  onDrop,
+  onPointerDown,
 }: LayerItemProps) {
   const selectedId = useStore($selectedLayerId);
   const isSelected = selectedId === layer.id;
@@ -34,7 +73,13 @@ export function LayerItem({
 
   const [editing, setEditing] = useState(false);
   const [nameValue, setNameValue] = useState(layer.name);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const closeMenu = useCallback(() => {
+    setMenu(null);
+    rowRef.current?.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => {
     if (editing) {
@@ -50,17 +95,30 @@ export function LayerItem({
     setEditing(false);
   };
 
+  const openMenuAtRow = () => {
+    const rect = rowRef.current?.getBoundingClientRect();
+    if (rect) setMenu({ x: rect.left + 24, y: rect.bottom });
+  };
+
   return (
     <div
-      draggable={!editing}
-      onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData('text/plain', layer.id); e.dataTransfer.effectAllowed = 'move'; onDragStart?.(layer.id); }}
-      onDragEnd={(e) => { e.stopPropagation(); onDragEnd?.(); }}
-      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; onDragOver?.(e); }}
-      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDrop?.(e); }}
+      ref={rowRef}
+      data-row-id={layer.id}
+      onPointerDown={(e) => { if (!editing) onPointerDown?.(e, layer.id); }}
       onMouseEnter={() => $hoveredLayerId.set(layer.id)}
       onMouseLeave={() => $hoveredLayerId.set(null)}
       onClick={() => !editing && selectLayer(layer.id)}
+      onContextMenu={(e) => {
+        if (editing) return;
+        e.preventDefault();
+        selectLayer(layer.id);
+        setMenu({ x: e.clientX, y: e.clientY });
+      }}
       tabIndex={0}
+      role="treeitem"
+      aria-level={depth + 1}
+      aria-selected={isSelected}
+      aria-expanded={isGroup ? !layer.collapsed : undefined}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') {
@@ -69,61 +127,44 @@ export function LayerItem({
         } else if (e.key === 'F2') {
           e.preventDefault();
           setEditing(true);
+        } else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+          e.preventDefault();
+          selectLayer(layer.id);
+          openMenuAtRow();
         }
       }}
       data-selected={isSelected}
       data-visible={layer.visible}
-      style={{ paddingLeft: `${(depth + 1) * 12}px`, opacity: isDragging ? 0.35 : 1 }}
-      className={`layer-row relative flex items-center gap-2 py-1 mx-2 pr-1 cursor-pointer select-none group transition-colors
-        ${isSelected
-          ? 'bg-[#0a84ff]/65 text-white'
-          : isInsideTarget
-          ? 'bg-[#0a84ff]/15 outline outline-1 outline-[#0a84ff]/50 text-[#ebebf5]'
-          : 'text-[#ebebf5] hover:bg-white/[0.06]'}`}
+      data-dragging={isDragging}
+      data-drop-inside={isInsideTarget}
+      style={{ paddingLeft: 6 + depth * LAYER_INDENT }}
+      className="layer-row"
     >
-      {dropEdge && (
-        <div
-          className="absolute right-1 h-0.5 rounded-full bg-[#0a84ff] pointer-events-none"
-          style={{ left: `${(depth + 1) * 12 + 4}px`, ...(dropEdge === 'before' ? { top: -1 } : { bottom: -1 }) }}
-        />
-      )}
       {isGroup ? (
         <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); toggleGroupCollapsed(layer.id); }}
           aria-label={layer.collapsed ? `Expand ${layer.name}` : `Collapse ${layer.name}`}
           aria-expanded={!layer.collapsed}
-          className={`w-4 h-4 flex items-center justify-center shrink-0 transition-transform
-            ${layer.collapsed ? '' : 'rotate-90'}`}
+          className="layer-disclosure"
         >
-          <CaretRight size={14} weight="bold" className="opacity-60" />
+          <CaretRight size={10} weight="bold" />
         </button>
       ) : (
-        <div className="w-4 h-4 shrink-0" />
+        <span className="layer-disclosure" aria-hidden="true" />
       )}
 
-      <div
-        className="w-8 h-8 rounded-[6px] shrink-0 overflow-hidden flex items-center justify-center p-1"
-        style={{
-          backgroundImage: isGroup ? undefined :
-            'linear-gradient(45deg,#333 25%,transparent 25%),' +
-            'linear-gradient(-45deg,#333 25%,transparent 25%),' +
-            'linear-gradient(45deg,transparent 75%,#333 75%),' +
-            'linear-gradient(-45deg,transparent 75%,#333 75%)',
-          backgroundSize: '6px 6px',
-          backgroundPosition: '0 0,0 3px,3px -3px,-3px 0',
-          backgroundColor: '#272727',
-        }}
-      >
+      <span className="layer-thumb" data-group={isGroup} aria-hidden="true">
         {isGroup ? (
-          <div className="w-full h-full rounded-[3px] flex items-center justify-center bg-white/[0.07]">
-            <Folder size={16} className="text-[#a1a1aa]" />
-          </div>
+          <Stack size={17} />
+        ) : layer.blobUrl && layer.fill.type !== 'none' ? (
+          <span className="layer-thumb-fill" style={{ ...thumbFill(layer.blobUrl, layer.fill), opacity: layer.opacity / 100 }} />
         ) : layer.blobUrl ? (
-          <img src={layer.blobUrl} alt="" className="w-full h-full object-contain" />
+          <img src={layer.blobUrl} alt="" draggable={false} style={{ opacity: layer.opacity / 100 }} />
         ) : (
-          <Image size={16} className="text-[#a1a1aa]" />
+          <Image size={14} />
         )}
-      </div>
+      </span>
 
       {editing ? (
         <input
@@ -139,11 +180,11 @@ export function LayerItem({
           }}
           onClick={(e) => e.stopPropagation()}
           aria-label="Layer name"
-          className="flex-1 min-w-0 text-xs bg-[#252528] border border-[#0a84ff] rounded px-1 py-px focus:outline-hidden text-[#ebebf5]"
+          className="layer-name-input"
         />
       ) : (
         <span
-          className="layer-name flex-1 text-xs truncate"
+          className="layer-name"
           onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
           title="Double-click to rename"
         >
@@ -153,21 +194,43 @@ export function LayerItem({
 
       <div className="layer-actions">
         <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); duplicateLayer(layer.id).catch(console.error); }}
+          aria-label={`Duplicate ${layer.name}`}
+          title="Duplicate layer"
+          className="layer-action"
+        >
+          <Copy size={14} />
+        </button>
+        <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(layer.id); }}
           aria-label={layer.visible ? `Hide ${layer.name}` : `Show ${layer.name}`}
           title={layer.visible ? 'Hide layer' : 'Show layer'}
+          className="layer-action layer-visibility"
         >
           {layer.visible ? <Eye size={15} /> : <EyeSlash size={15} />}
         </button>
         <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); removeLayer(layer.id); selectLayer(null); }}
-          className="layer-remove"
           aria-label={`Remove ${layer.name}`}
           title="Remove layer"
+          className="layer-action layer-remove"
         >
-          <Trash size={15} />
+          <X size={14} weight="bold" />
         </button>
       </div>
+
+      {menu && (
+        <LayerMenu
+          x={menu.x}
+          y={menu.y}
+          label={`${layer.name} actions`}
+          items={menuEntries(layer, () => setEditing(true))}
+          onClose={closeMenu}
+        />
+      )}
     </div>
   );
 }

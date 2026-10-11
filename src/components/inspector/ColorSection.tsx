@@ -4,6 +4,7 @@ import { $layers, updateLayer, updateLayerFill } from '../../store/iconStore';
 import { $selectedLayerId } from '../../store/uiStore';
 import { Slider } from '../ui/Slider';
 import { Select } from '../ui/Select';
+import { ColorPicker } from '../ui/ColorPicker';
 import type { BlendMode, FillConfig } from '../../types/index';
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -30,6 +31,7 @@ const BLEND_MODES: { value: BlendMode; label: string }[] = [
   { value: 'soft-light', label: 'Soft Light' },
   { value: 'difference', label: 'Difference' },
   { value: 'exclusion', label: 'Exclusion' },
+  { value: 'plus-lighter', label: 'Plus Lighter' },
 ];
 
 const FILL_TYPES = [
@@ -57,17 +59,18 @@ export function ColorSection() {
   useLayoutEffect(() => {
     if (layer?.fill.type === 'solid') {
       const color = layer.fill.color ?? '#ffffff';
-      if (color !== localSolidColor) {
+      if (color !== localSolidColor && color !== debouncedSolidColor) {
         skipSolidSync.current = true;
         setLocalSolidColor(color);
       }
     } else if (layer?.fill.type === 'gradient' && 'stops' in layer.fill) {
-      if (JSON.stringify(layer.fill.stops) !== JSON.stringify(localStops)) {
+      const stops = JSON.stringify(layer.fill.stops);
+      if (stops !== JSON.stringify(localStops) && stops !== JSON.stringify(debouncedStops)) {
         skipStopsSync.current = true;
         setLocalStops(layer.fill.stops as typeof localStops);
       }
     }
-  }, [layer?.id, layer?.fill.type]);
+  }, [layer?.id, layer?.fill]);
 
   useEffect(() => {
     if (!layer) return;
@@ -80,7 +83,7 @@ export function ColorSection() {
   useEffect(() => {
     if (!layer || layer.fill.type !== 'gradient' || !('stops' in layer.fill)) return;
     if (skipStopsSync.current) { skipStopsSync.current = false; return; }
-    if (debouncedStops.length > 0 && debouncedStops.every((s) => HEX_RE.test(s.color))) {
+    if (debouncedStops.length > 0 && debouncedStops.every((s) => HEX_RE.test(s.color)) && JSON.stringify(debouncedStops) !== JSON.stringify(layer.fill.stops)) {
       updateLayerFill(layer.id, { type: 'gradient', stops: debouncedStops, angle: layer.fill.angle });
     }
   }, [debouncedStops]);
@@ -148,13 +151,7 @@ export function ColorSection() {
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-xs text-[#636366] w-16 shrink-0">Color</span>
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <input
-                  type="color"
-                  aria-label="Fill color"
-                  value={localSolidColor}
-                  onChange={(e) => setLocalSolidColor(e.target.value)}
-                  className="w-7 h-6 shrink-0 rounded cursor-pointer bg-transparent border-0"
-                />
+                <ColorPicker label="Fill color" value={localSolidColor} onChange={setLocalSolidColor} />
                 <input
                   type="text"
                   aria-label="Fill hex color"
@@ -176,16 +173,14 @@ export function ColorSection() {
                 const stop = localStops[i] ?? { offset: i, color: i === 0 ? '#ffffff' : '#000000' };
                 return (
                   <div key={i} className="flex items-center gap-2 min-w-0">
-                    <input
-                      type="color"
-                      aria-label={`Gradient color ${i + 1}`}
+                    <ColorPicker
+                      label={`Gradient color ${i + 1}`}
                       value={stop.color}
-                      onChange={(e) => {
+                      onChange={(hex) => {
                         const newStops = [...localStops];
-                        newStops[i] = { ...newStops[i], color: e.target.value };
+                        newStops[i] = { ...newStops[i], color: hex };
                         setLocalStops(newStops);
                       }}
-                      className="w-7 h-6 shrink-0 rounded cursor-pointer bg-transparent border-0"
                     />
                     <input
                       type="text"

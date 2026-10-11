@@ -1,20 +1,57 @@
-export function drawSquirclePath(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, n = 5) {
-  const r = size / 2;
-  const cx = x + r;
-  const cy = y + r;
-  const steps = Math.max(512, Math.ceil(size * 4));
+import { CHICLET_CORNER_RADIUS } from './glassContract';
 
-  ctx.beginPath();
-  for (let i = 0; i <= steps; i++) {
-    const angle = (i * 2 * Math.PI) / steps;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    const px = cx + r * Math.sign(cos) * Math.pow(Math.abs(cos), 2 / n);
-    const py = cy + r * Math.sign(sin) * Math.pow(Math.abs(sin), 2 / n);
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
+// ── Continuous corner: circular arc between two cubics, curve starts 1.52866·r from the corner ──
+const CORNER = (() => {
+  const s = 0.52866;
+  const beta = (Math.PI / 4) * s;
+  const arcLen = Math.sin((Math.PI / 4) * (1 - s)) * Math.SQRT2;
+  const c = Math.tan(beta / 2) * Math.cos(beta);
+  const d = c * Math.tan(beta);
+  const p = 1 + s;
+  const b = (p - arcLen - c - d) / 3;
+  return { p, a: 2 * b, b, c, d };
+})();
+
+function traceSquircle(path: CanvasPath, x: number, y: number, size: number) {
+  const { p, a, b, c, d } = CORNER;
+  const r = Math.min(CHICLET_CORNER_RADIUS, 0.5 / p) * size;
+  const e = p - a - b - c;
+  const corners: [number, number, number, number, number, number][] = [
+    [x + size, y, -1, 0, 0, 1],
+    [x + size, y + size, 0, -1, -1, 0],
+    [x, y + size, 1, 0, 0, -1],
+    [x, y, 0, 1, 1, 0],
+  ];
+  path.moveTo(x + p * r, y);
+  for (const [kx, ky, ux, uy, vx, vy] of corners) {
+    const at = (s: number, t: number): [number, number] => [kx + (s * ux + t * vx) * r, ky + (s * uy + t * vy) * r];
+    const [ox, oy] = at(1, 1);
+    const [sx, sy] = at(e, d);
+    const [tx, ty] = at(d, e);
+    path.lineTo(...at(p, 0));
+    path.bezierCurveTo(...at(p - a, 0), ...at(p - a - b, 0), sx, sy);
+    path.arc(ox, oy, r, Math.atan2(sy - oy, sx - ox), Math.atan2(ty - oy, tx - ox));
+    path.bezierCurveTo(...at(0, p - a - b), ...at(0, p - a), ...at(0, p));
   }
-  ctx.closePath();
+  path.closePath();
+}
+
+export function drawSquirclePath(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  ctx.beginPath();
+  traceSquircle(ctx, x, y, size);
+}
+
+const squircleCache = new Map<number, Path2D>();
+
+export function squirclePath(size: number): Path2D {
+  let path = squircleCache.get(size);
+  if (!path) {
+    path = new Path2D();
+    traceSquircle(path, 0, 0, size);
+    squircleCache.set(size, path);
+    if (squircleCache.size > 12) squircleCache.delete(squircleCache.keys().next().value!);
+  }
+  return path;
 }
 
 export function createBackgroundCanvas(
@@ -31,7 +68,7 @@ export function createBackgroundCanvas(
     const angle = ((config.angle ?? 90) * Math.PI) / 180;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    const r = Math.sqrt(width * width + height * height) / 2;
+    const r = (Math.abs(cos) * width + Math.abs(sin) * height) / 2;
     const cx = width / 2;
     const cy = height / 2;
     const grad = ctx.createLinearGradient(

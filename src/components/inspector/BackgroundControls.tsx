@@ -1,6 +1,16 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useStore } from '@nanostores/react';
 import { $background, updateBackground, bgColorsFromHueTint } from '../../store/iconStore';
+import { ColorPicker } from '../ui/ColorPicker';
+
+function hslToHex(h: number, s: number, l: number): string {
+  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
+  const channel = (n: number) => {
+    const k = (n + h / 30) % 12;
+    return Math.round((l / 100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255).toString(16).padStart(2, '0');
+  };
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
+}
 
 function hexToHSL(hex: string): { h: number; s: number; l: number } {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -36,6 +46,11 @@ const PRESET_COLORS = [
   { hex: '#AC7F5E', label: 'Brown'  },
   { hex: '#F2F2F7', label: 'White'      },
   { hex: '#1C1C1E', label: 'Near Black' },
+];
+
+const GRADIENT_PRESETS = [
+  { label: 'System Light', stops: [{ offset: 0, color: '#FFFFFF' }, { offset: 1, color: '#F5F5F5' }] },
+  { label: 'System Dark', stops: [{ offset: 0, color: '#1F1F1F' }, { offset: 1, color: '#0F0F0F' }] },
 ];
 
 function GradientSlider({
@@ -242,25 +257,24 @@ export function BackgroundControls() {
 
       {localBgType === 'preset' ? (
         <div className="p-4 space-y-4">
-          <div className="relative group focus-within:outline-2 focus-within:outline-[#64a8ff] focus-within:outline-offset-2 rounded-[8px]">
+          <ColorPicker
+            label="Background color"
+            value={hslToHex(hue, sat, l1cur)}
+            onChange={handleCustomColor}
+            className="relative group block w-full rounded-[8px]"
+          >
             <span
               aria-hidden="true"
               className="block w-full h-8 rounded-[8px]"
               style={{ background: bgPreview, boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.12)' }}
             />
-            <div
+            <span
               className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-[10px]"
               style={{ background: 'rgba(0,0,0,0.35)' }}
             >
               <span className="text-[10px] text-white font-medium">Custom color</span>
-            </div>
-            <input
-              type="color"
-              aria-label="Background color"
-              className="background-color-picker-input absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={(e) => handleCustomColor(e.target.value)}
-            />
-          </div>
+            </span>
+          </ColorPicker>
 
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-widest mb-2 block" style={{ color: 'rgba(255,255,255,0.28)' }}>
@@ -332,16 +346,11 @@ export function BackgroundControls() {
               const stop = localStops[i] ?? { offset: i, color: i === 0 ? '#2a2a2e' : '#1a1a1e' };
               return (
                 <div key={i} className="flex items-center gap-2 w-full">
-                  <div className="relative w-[30px] h-[30px] shrink-0 rounded-[7px] overflow-hidden" style={{ boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.15)' }}>
-                    <input
-                      type="color"
-                      aria-label={`Gradient color ${i + 1}`}
-                      value={/^#[0-9a-f]{6}$/i.test(stop.color) ? stop.color : bgValuesRef.current.stops[i]?.color ?? '#000000'}
-                      onChange={(e) => handleStopChange(i, e.target.value)}
-                      className="absolute inset-0 w-full h-full cursor-pointer border-0 p-0"
-                    />
-                    <div className="absolute inset-0 pointer-events-none" style={{ background: stop.color }} />
-                  </div>
+                  <ColorPicker
+                    label={`Gradient color ${i + 1}`}
+                    value={/^#[0-9a-f]{6}$/i.test(stop.color) ? stop.color : bgValuesRef.current.stops[i]?.color ?? '#000000'}
+                    onChange={(hex) => handleStopChange(i, hex)}
+                  />
                   <input
                     type="text"
                     aria-label={`Gradient hex color ${i + 1}`}
@@ -352,6 +361,32 @@ export function BackgroundControls() {
                 </div>
               );
             })}
+          </div>
+
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-widest mb-2 block" style={{ color: 'rgba(255,255,255,0.28)' }}>
+              Presets
+            </span>
+            <div className="grid grid-cols-7 gap-1.5 w-full">
+              {GRADIENT_PRESETS.map(({ label, stops }) => (
+                <button
+                  type="button"
+                  key={label}
+                  title={label}
+                  aria-label={label}
+                  onClick={() => {
+                    setLocalStops(stops);
+                    bgValuesRef.current = { ...bgValuesRef.current, type: 'custom', stops };
+                    scheduleUpdate();
+                  }}
+                  className="aspect-square rounded-lg transition-transform hover:scale-110 active:scale-95"
+                  style={{
+                    background: `linear-gradient(180deg, ${stops.map((s) => s.color).join(', ')})`,
+                    boxShadow: '0 0 0 0.5px rgba(255,255,255,0.15), 0 1px 4px rgba(0,0,0,0.3)',
+                  }}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}

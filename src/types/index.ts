@@ -14,9 +14,10 @@ export type BlendMode =
   | 'hue'
   | 'saturation'
   | 'color'
-  | 'luminosity';
+  | 'luminosity'
+  | 'plus-lighter';
 
-export type AppearanceMode = 'default' | 'dark' | 'clear';
+export type AppearanceMode = 'default' | 'dark' | 'clear' | 'clearDark';
 
 export interface ColorStop {
   offset: number; // 0-1
@@ -40,19 +41,24 @@ export interface LayerEffects {
   outerBorderAlpha: number;    // 0-100
   specularEdge: number;        // 0-100
   rimIntensity: number;        // 0-100
+  bottomHighlight: number;     // 0-100
   envReflection: number;       // 0-100
   innerGlow: number;           // 0-100
   ambientRim: number;          // 0-100
   aoDarken: number;            // 0-100
   frostiness: number;          // 0-100
+  edgeDarken: number;          // 0-100
   bevel: number;               // % of size
-  refraction: number;          // 0-100
+  refraction: number;          // -100..100
+  keyHighlight: number;        // 0-100
+  fillHighlight: number;       // 0-100
+  darklight: number;           // 0-100
 }
 
 export interface LiquidGlassConfig {
   enabled: boolean;
   mode: 'individual' | 'all';
-  specular: boolean;
+  specular: boolean | 'inside' | 'outside'; // true = automatic
   blur: { enabled: boolean; value: number };
   translucency: { enabled: boolean; value: number };
   dark: { enabled: boolean; value: number };
@@ -65,7 +71,7 @@ export interface LiquidGlassConfig {
   aberration?: number;        // 0-100
   specularIntensity?: number; // 0-100
   effects?: Partial<LayerEffects>;
-  refraction?: { enabled: boolean; thickness: number; factor: number; dispersion: number };
+  refraction?: { enabled: boolean };
   fresnel?: { enabled: boolean; range: number; factor: number; hardness: number };
   glare?: { enabled: boolean; range: number; convergence: number; factor: number; angle: number };
   tint?: { r: number; g: number; b: number; a: number };

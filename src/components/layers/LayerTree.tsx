@@ -1,152 +1,62 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useStore } from '@nanostores/react';
 import {
   $layers,
   addLayer,
   addGroup,
-  reorderLayer,
-  moveLayerToGroup,
   removeLayer,
+  duplicateLayer,
+  arrangeLayer,
+  nudgeLayer,
+  copyLayerStyle,
+  pasteLayerStyle,
+  copiedLayerMarker,
+  copyLayer,
+  cutLayer,
+  pasteLayers,
+  setHistoryGesture,
+  undo,
+  redo,
 } from '../../store/iconStore';
-import { $persistenceEnabled, $selectedLayerId, selectLayer, CANVAS_SELECTION_ID } from '../../store/uiStore';
+import { $persistenceEnabled, $selectedLayerId, $showGrid, selectLayer, CANVAS_SELECTION_ID } from '../../store/uiStore';
 import { clearPersistence } from '../../store/persistence';
+import { $fileDropZone, addImageFiles, imageFiles } from '../useFileDrop';
 import { LayerItem } from './LayerItem';
+import { useLayerDrag, LAYER_INDENT } from './useLayerDrag';
 import { Toggle } from '../ui/Toggle';
 import type { Layer } from '../../types/index';
-import { Folder, Plus, CloudArrowDown, Trash, Square } from '@phosphor-icons/react';
+import { Plus, ArrowCounterClockwise, FolderSimplePlus, Square } from '@phosphor-icons/react';
 
 type ItemRow = { kind: 'item'; layer: Layer; depth: number };
-type GapRow = {
-  kind: 'gap';
-  key: string;
-  parentId: string | null;
-  targetId: string;
-  position: 'before' | 'after';
-  depth: number;
-};
-type EmptyGroupRow = { kind: 'empty-group'; key: string; groupId: string; depth: number };
-type Row = ItemRow | GapRow | EmptyGroupRow;
+type EmptyGroupRow = { kind: 'empty-group'; groupId: string };
+type Row = ItemRow | EmptyGroupRow;
 
 function buildRows(layers: Layer[]): Row[] {
   const rows: Row[] = [];
-  const roots = layers
-    .filter((l) => l.parentId === null)
-    .sort((a, b) => b.order - a.order);
-
-  if (roots.length === 0) return rows;
-
-  rows.push({
-    kind: 'gap',
-    key: `root:${roots[0].id}:before`,
-    parentId: null,
-    targetId: roots[0].id,
-    position: 'before',
-    depth: 0,
-  });
-
-  for (const root of roots) {
+  const byOrder = (a: Layer, b: Layer) => b.order - a.order;
+  for (const root of layers.filter((l) => l.parentId === null).sort(byOrder)) {
     rows.push({ kind: 'item', layer: root, depth: 0 });
-
-    if (root.type === 'group' && !root.collapsed) {
-      const children = layers
-        .filter((l) => l.parentId === root.id)
-        .sort((a, b) => b.order - a.order);
-
-      if (children.length === 0) {
-        rows.push({ kind: 'empty-group', key: `empty:${root.id}`, groupId: root.id, depth: 1 });
-      } else {
-        rows.push({
-          kind: 'gap',
-          key: `${root.id}:${children[0].id}:before`,
-          parentId: root.id,
-          targetId: children[0].id,
-          position: 'before',
-          depth: 1,
-        });
-        for (const child of children) {
-          rows.push({ kind: 'item', layer: child, depth: 1 });
-          rows.push({
-            kind: 'gap',
-            key: `${root.id}:${child.id}:after`,
-            parentId: root.id,
-            targetId: child.id,
-            position: 'after',
-            depth: 1,
-          });
-        }
-      }
-    }
-
-    rows.push({
-      kind: 'gap',
-      key: `root:${root.id}:after`,
-      parentId: null,
-      targetId: root.id,
-      position: 'after',
-      depth: 0,
-    });
+    if (root.type !== 'group' || root.collapsed) continue;
+    const children = layers.filter((l) => l.parentId === root.id).sort(byOrder);
+    if (!children.length) rows.push({ kind: 'empty-group', groupId: root.id });
+    for (const child of children) rows.push({ kind: 'item', layer: child, depth: 1 });
   }
-
   return rows;
 }
 
-function DropGap({
-  isActive,
-  depth,
-  onDragOver,
-  onDrop,
-}: {
-  isActive: boolean;
-  depth: number;
-  onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent) => void;
-}) {
-  return (
-    <div
-      style={{ paddingLeft: `${(depth + 1) * 12}px`, height: 4, position: 'relative' }}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-    >
-      {isActive && (
-        <div
-          style={{
-            position: 'absolute',
-            left: `${(depth + 1) * 12 + 4}px`,
-            right: 4,
-            top: '50%',
-            height: 2,
-            transform: 'translateY(-50%)',
-            background: '#0a84ff',
-            borderRadius: 2,
-            pointerEvents: 'none',
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function FileUploadZone({ onFiles }: { onFiles: (files: File[]) => void }) {
-  const [over, setOver] = useState(false);
+function FileUploadZone({ onFiles, compact = false }: { onFiles: (files: File[]) => void; compact?: boolean }) {
+  const over = useStore($fileDropZone) === 'import';
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div
-      onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-      onDragLeave={() => setOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setOver(false);
-        const files = Array.from(e.dataTransfer.files).filter(
-          (f) => f.type === 'image/svg+xml' || f.type === 'image/png' || f.type === 'image/jpeg',
-        );
-        if (files.length) onFiles(files);
-      }}
       className="layer-import"
+      data-file-drop="import"
       data-drag-over={over}
+      data-compact={compact}
     >
-      <button type="button" onClick={() => inputRef.current?.click()}>
-        <Plus size={18} />
+      <button type="button" onClick={() => inputRef.current?.click()} title="Import SVG, PNG, or JPEG">
+        <Plus size={compact ? 14 : 18} />
         <span>
           Import Artwork…
           <span className="layer-import-caption">Drop SVG, PNG, or JPEG</span>
@@ -159,7 +69,7 @@ function FileUploadZone({ onFiles }: { onFiles: (files: File[]) => void }) {
         multiple
         className="hidden"
         onChange={(e) => {
-          const files = Array.from(e.target.files ?? []);
+          const files = imageFiles(e.target.files ?? []);
           if (files.length) onFiles(files);
           e.target.value = '';
         }}
@@ -175,7 +85,7 @@ function SettingsDropdown() {
 
   useEffect(() => {
     if (!open) return;
-    menuRef.current?.querySelector<HTMLButtonElement>('[role="switch"]')?.focus();
+    menuRef.current?.querySelector<HTMLButtonElement>('.editor-menu-danger')?.focus();
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
     };
@@ -197,41 +107,42 @@ function SettingsDropdown() {
     <div className="relative" ref={menuRef} onBlur={(e) => { if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        title="Save settings"
-        aria-label="Save settings"
+        title="Reset and auto-save"
+        aria-label="Reset and auto-save"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="save-settings-popover"
         className="editor-icon-button"
       >
-        <CloudArrowDown size={16} />
+        <ArrowCounterClockwise size={16} />
       </button>
       {open && (
         <div
           id="save-settings-popover"
           role="dialog"
-          aria-label="Save settings"
+          aria-label="Reset and auto-save"
           className="editor-popover editor-settings-popover"
         >
-          <div className="flex items-center justify-between px-3 py-[5px]">
-            <span className="text-xs font-medium text-[#d1d1d6]">
-              Auto-save
-            </span>
-            <Toggle ariaLabel="Auto-save" checked={persistenceEnabled} onChange={(v) => $persistenceEnabled.set(v)} />
-          </div>
-          <div className="mx-2 my-1" style={{ height: '0.5px', background: 'rgba(255,255,255,0.08)' }} />
           <button
             onClick={() => {
-              if (window.confirm('Reset all saved data? This action cannot be undone.')) {
+              if (window.confirm('Reset the document and all saved data? This action cannot be undone.')) {
                 setOpen(false);
                 clearPersistence();
               }
             }}
             className="editor-menu-item editor-menu-danger"
           >
-            <Trash size={13} weight="bold" />
-            Reset Progress
+            <ArrowCounterClockwise size={14} weight="bold" />
+            Reset Document…
           </button>
+          <div className="mx-2 my-1" style={{ height: '0.5px', background: 'rgba(255,255,255,0.08)' }} />
+          <div className="flex items-center justify-between gap-3 px-2 py-[5px]">
+            <span className="text-xs text-[#d1d1d6]">
+              Auto-save
+              <span className="block text-2xs text-[#8e8e93]">Keep this icon after reload</span>
+            </span>
+            <Toggle ariaLabel="Auto-save" checked={persistenceEnabled} onChange={(v) => $persistenceEnabled.set(v)} />
+          </div>
         </div>
       )}
     </div>
@@ -241,112 +152,100 @@ function SettingsDropdown() {
 export function LayerTree() {
   const layers = useStore($layers);
   const selectedId = useStore($selectedLayerId);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [activeGapKey, setActiveGapKey] = useState<string | null>(null);
-  const [groupHoverId, setGroupHoverId] = useState<string | null>(null);
-  const [edgeTarget, setEdgeTarget] = useState<{ layerId: string; position: 'before' | 'after' } | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const fileZone = useStore($fileDropZone);
+  const { dragId, target, onRowPointerDown } = useLayerDrag(listRef);
 
   const rows = buildRows(layers);
-  const draggingLayer = draggingId ? layers.find((l) => l.id === draggingId) : undefined;
 
   useEffect(() => {
+    let pasteFallback = 0;
+    const handlePaste = (e: ClipboardEvent) => {
+      clearTimeout(pasteFallback);
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.defaultPrevented || !e.clipboardData) return;
+      const text = e.clipboardData.getData('text/plain');
+      const files = imageFiles(e.clipboardData.files);
+      const svg = /^\s*</.test(text) && /<svg[\s>]/i.test(text);
+      const marker = copiedLayerMarker();
+      if (!marker && !files.length && !svg) return;
+      e.preventDefault();
+      if (marker && (text === marker || (!files.length && !svg))) pasteLayers().catch(console.error);
+      else addImageFiles(files.length ? files : [new File([text], 'image.svg', { type: 'image/svg+xml' })]).catch(console.error);
+    };
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.defaultPrevented) return;
+      const mod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+      if (mod && !e.altKey && (key === 'z' || (key === 'y' && e.ctrlKey))) {
+        if (key === 'z' && !e.shiftKey ? undo() : redo()) e.preventDefault();
+        return;
+      }
+      if (mod && e.altKey && e.code === 'KeyG') {
+        e.preventDefault();
+        $showGrid.set(!$showGrid.get());
+        return;
+      }
+      if (mod && !e.altKey && key === 'v') {
+        pasteFallback = window.setTimeout(() => pasteLayers().catch(console.error));
+        return;
+      }
+      const selectedId = $selectedLayerId.get();
+      if (!selectedId || selectedId === CANVAS_SELECTION_ID) return;
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const selectedId = $selectedLayerId.get();
-        if (selectedId && selectedId !== CANVAS_SELECTION_ID) {
+        e.preventDefault();
+        removeLayer(selectedId);
+        selectLayer(null);
+      } else if (mod && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        duplicateLayer(selectedId).catch(console.error);
+      } else if (mod && (e.key === ']' || e.key === '[')) {
+        e.preventDefault();
+        arrangeLayer(selectedId, e.key === ']' ? 'forward' : 'backward');
+      } else if (mod && e.shiftKey && (e.code === 'KeyF' || e.code === 'KeyB')) {
+        e.preventDefault();
+        const forward = e.code === 'KeyF';
+        arrangeLayer(selectedId, e.altKey ? (forward ? 'front' : 'back') : (forward ? 'forward' : 'backward'));
+      } else if (mod && !e.altKey && !e.shiftKey && (key === 'c' || key === 'x')) {
+        if (getSelection()?.toString()) return;
+        e.preventDefault();
+        const marker = key === 'c' ? copyLayer(selectedId) : cutLayer(selectedId);
+        if (key === 'x') selectLayer(null);
+        if (marker) navigator.clipboard?.writeText(marker).catch(() => {});
+      } else if (mod && e.altKey && e.code === 'KeyC') {
+        e.preventDefault();
+        copyLayerStyle(selectedId);
+      } else if (mod && e.altKey && e.code === 'KeyV') {
+        if (pasteLayerStyle(selectedId)) e.preventDefault();
+      } else if (mod && e.key === 'ArrowUp') {
+        const parentId = $layers.get().find((l) => l.id === selectedId)?.parentId;
+        if (parentId) {
           e.preventDefault();
-          removeLayer(selectedId);
-          selectLayer(null);
+          selectLayer(parentId);
         }
+      } else if (!mod && !e.altKey && e.key.startsWith('Arrow')) {
+        e.preventDefault();
+        const step = ((e.shiftKey ? 10 : 1) * 100) / 1024; // 1 or 10 pt
+        setHistoryGesture(e.repeat);
+        nudgeLayer(
+          selectedId,
+          e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0,
+          e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0,
+        );
+        setHistoryGesture(false);
       }
     };
     document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('keydown', handler);
+      document.removeEventListener('paste', handlePaste);
+    };
   }, []);
 
-  const handleFiles = useCallback((files: File[]) => {
-    files.forEach((file) => {
-      const url = URL.createObjectURL(file);
-      addLayer(url, file.name);
-    });
-  }, []);
-
-  const clearTargets = useCallback(() => {
-    setActiveGapKey(null);
-    setGroupHoverId(null);
-    setEdgeTarget(null);
-  }, []);
-
-  const resetDrag = useCallback(() => {
-    setDraggingId(null);
-    clearTargets();
-  }, [clearTargets]);
-
-  const handleGapDrop = useCallback(
-    (parentId: string | null, targetId: string, position: 'before' | 'after') => {
-      if (!draggingId) return;
-      const allLayers = $layers.get();
-      const dragging = allLayers.find((l) => l.id === draggingId);
-      if (!dragging || dragging.id === targetId) return;
-      if (dragging.type === 'group' && parentId !== null) return;
-      if (dragging.parentId !== parentId) {
-        moveLayerToGroup(draggingId, parentId);
-      }
-      reorderLayer(draggingId, targetId, position);
-      resetDrag();
-    },
-    [draggingId, resetDrag],
-  );
-
-  // ── Inside-group drop (empty groups / collapsed groups) ──────────────────────
-  const handleInsideDrop = useCallback(
-    (groupId: string) => {
-      if (!draggingId || draggingId === groupId || draggingLayer?.type === 'group') return;
-      moveLayerToGroup(draggingId, groupId);
-      resetDrag();
-    },
-    [draggingId, draggingLayer, resetDrag],
-  );
-
-  const zoneFor = (e: React.DragEvent<HTMLDivElement>, layer: Layer): 'before' | 'after' | 'inside' => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const t = (e.clientY - rect.top) / rect.height;
-    if (layer.type === 'group' && draggingLayer?.type !== 'group') {
-      if (layer.collapsed) return t < 0.25 ? 'before' : t > 0.75 ? 'after' : 'inside';
-      return t < 0.3 ? 'before' : 'inside';
-    }
-    return t < 0.5 ? 'before' : 'after';
-  };
-
-  const groupIntoGroup = (parentId: string | null) => draggingLayer?.type === 'group' && parentId !== null;
-  const canTarget = (layer: Layer) => !!draggingId && draggingId !== layer.id && layer.parentId !== draggingId && !groupIntoGroup(layer.parentId);
-
-  const handleItemDragOver = (e: React.DragEvent<HTMLDivElement>, layer: Layer) => {
-    if (!canTarget(layer)) { clearTargets(); return; }
-    const zone = zoneFor(e, layer);
-    setActiveGapKey(null);
-    if (zone === 'inside') {
-      setEdgeTarget(null);
-      setGroupHoverId(layer.id);
-    } else {
-      setGroupHoverId(null);
-      setEdgeTarget((prev) => (prev?.layerId === layer.id && prev.position === zone ? prev : { layerId: layer.id, position: zone }));
-    }
-  };
-
-  const handleItemDrop = (e: React.DragEvent<HTMLDivElement>, layer: Layer) => {
-    if (!canTarget(layer)) { resetDrag(); return; }
-    const zone = zoneFor(e, layer);
-    if (zone === 'inside') {
-      const first = layers.filter((l) => l.parentId === layer.id).sort((a, b) => b.order - a.order)[0];
-      if (first && !layer.collapsed) handleGapDrop(layer.id, first.id, 'before');
-      else handleInsideDrop(layer.id);
-    } else {
-      handleGapDrop(layer.parentId, layer.id, zone);
-    }
-  };
+  const indicator = target?.kind === 'between' ? target : null;
+  const insideId = target?.kind === 'inside' ? target.groupId : null;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -360,7 +259,7 @@ export function LayerTree() {
             aria-label="Add group"
             className="editor-icon-button"
           >
-            <Folder size={16} />
+            <FolderSimplePlus size={16} />
           </button>
           <button
             onClick={() => addLayer()}
@@ -374,80 +273,42 @@ export function LayerTree() {
       </div>
 
       <div
-        className="flex-1 min-h-0 overflow-y-auto flex flex-col"
-        onDragEnd={resetDrag}
-        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) clearTargets(); }}
+        ref={listRef}
+        role="tree"
+        aria-label="Layers"
+        className="layer-list"
+        data-dragging={!!dragId}
+        data-file-drop="layers"
+        data-file-over={fileZone === 'layers' || fileZone === 'import'}
       >
-        {layers.length === 0 ? (
-          <FileUploadZone onFiles={handleFiles} />
+        <FileUploadZone onFiles={(files) => addImageFiles(files).catch(console.error)} compact={layers.length > 0} />
+        {rows.map((row) => row.kind === 'empty-group' ? (
+          <div
+            key={`empty:${row.groupId}`}
+            data-row-id={row.groupId}
+            data-row-kind="empty"
+            data-drop-inside={insideId === row.groupId}
+            className="layer-empty-group"
+            style={{ paddingLeft: 6 + LAYER_INDENT + 22 }}
+          >
+            No layers
+          </div>
         ) : (
-          <>
-            <FileUploadZone onFiles={handleFiles} />
-
-            {rows.map((row) => {
-              if (row.kind === 'gap') {
-                const isActive = activeGapKey === row.key;
-                return (
-                  <DropGap
-                    key={row.key}
-                    isActive={isActive}
-                    depth={row.depth}
-                    onDragOver={(e) => {
-                      if (groupIntoGroup(row.parentId)) return;
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setActiveGapKey(row.key);
-                      setGroupHoverId(null);
-                      setEdgeTarget(null);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleGapDrop(row.parentId, row.targetId, row.position);
-                    }}
-                  />
-                );
-              }
-
-              // ── Empty group placeholder (invisible drop zone, no text) ────────
-              if (row.kind === 'empty-group') {
-                return (
-                  <div
-                    key={row.key}
-                    style={{ paddingLeft: `${(row.depth + 1) * 12}px`, height: 14 }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setGroupHoverId(row.groupId);
-                      setActiveGapKey(null);
-                      setEdgeTarget(null);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleInsideDrop(row.groupId);
-                    }}
-                  />
-                );
-              }
-
-              const { layer, depth } = row;
-              return (
-                <LayerItem
-                  key={layer.id}
-                  layer={layer}
-                  depth={depth}
-                  isDragging={draggingId === layer.id}
-                  isInsideTarget={layer.type === 'group' && groupHoverId === layer.id}
-                  dropEdge={edgeTarget?.layerId === layer.id ? edgeTarget.position : null}
-                  onDragStart={(id) => { setDraggingId(id); clearTargets(); }}
-                  onDragEnd={resetDrag}
-                  onDragOver={(e) => handleItemDragOver(e, layer)}
-                  onDrop={(e) => handleItemDrop(e, layer)}
-                />
-              );
-            })}
-          </>
+          <LayerItem
+            key={row.layer.id}
+            layer={row.layer}
+            depth={row.depth}
+            isDragging={!!dragId && (dragId === row.layer.id || dragId === row.layer.parentId)}
+            isInsideTarget={insideId === row.layer.id}
+            onPointerDown={onRowPointerDown}
+          />
+        ))}
+        {indicator && (
+          <div
+            className="layer-drop-indicator"
+            style={{ top: indicator.y, left: 8 + 6 + 16 + indicator.depth * LAYER_INDENT }}
+            aria-hidden="true"
+          />
         )}
       </div>
       <button
