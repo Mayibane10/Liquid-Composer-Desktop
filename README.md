@@ -48,7 +48,7 @@ Highlights, refraction, translucency, blur and shadows follow the formulas and v
 - `⌥⌘C` / `⌥⌘V` copy and paste style: glass, fill, opacity and blend mode
 - `⌥⌘G` toggle the icon grid
 
-## Getting started
+## Getting started (Build for Web)
 
 Requires Node 20.19+ or 22.12+.
 
@@ -56,6 +56,13 @@ Requires Node 20.19+ or 22.12+.
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # production build in dist/
+```
+
+## Desktop Builds (Debug)
+
+```sh
+npm install
+npm run desktop # works on any os (debugging only)
 ```
 
 ## Use with AI agents
