@@ -65,6 +65,31 @@ npm install
 npm run desktop # works on any os (debugging only)
 ```
 
+## Windows Builds (Relese)
+
+```sh
+npm install        # if not dons so already
+npm run dist:win   # NSIS installer + portable .exe
+# Output in release/
+```
+
+## Macos Builds (Appinstaller)
+
+```sh
+npm install        # if not dons so already
+npm run dist:mac   # .dmg
+# Output in release/
+```
+
+# Linux Builds (Relese)
+
+```sh
+npm install        # if not dons so already
+npm run dist:mac   # .dmg
+npm run dist:linux # AppImage + .deb
+# Output in release/
+```
+
 ## Use with AI agents
 
 Agents drive the same app and engine as the editor. An icon is a JSON recipe: background, layers top to bottom, glass settings and outputs. Applying a recipe replaces the document, and renders come from the WebGL2 engine in headless Chrome.
