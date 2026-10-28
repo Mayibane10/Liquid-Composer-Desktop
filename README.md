@@ -86,7 +86,6 @@ npm run dist:mac   # .dmg
 
 ```sh
 npm install        # if not dons so already
-npm run dist:mac   # .dmg
 npm run dist:linux # AppImage + .deb
 # Output in release/
 ```
