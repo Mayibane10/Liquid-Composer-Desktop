@@ -9,6 +9,9 @@
 <p align="center"><a href="https://liquid-composer.vercel.app"><b>liquid-composer.vercel.app</b></a></p>
 
 <p align="center"><img alt="Static build passing Badge" src="https://img.shields.io/badge/build-passing-brightgreen"> <img alt="Static supported os Badge" src="https://img.shields.io/badge/Supported%20OS-Windows%2C%20MacOS%2C%20Linux-blue"> <img alt="Static wesite Badge" src="https://img.shields.io/badge/Web-Live-green"></p>
+
+<h3 align="center" > Thanks to <a href="https://github.com/frontedu"><b>@Frontedu</b> </a> For original Implementation</h3>
+
 Liquid Composer is a web app recreation of Apple's Icon Composer that reproduces the Liquid Glass icon material of iOS 27 and Icon Composer 2. Drop in your artwork, stack it in layers, and the engine renders the glass in real time: light from above, highlights and dark edges that define each shape, refraction between layers, background blur, translucency and layer shadows, composited inside the iOS squircle.
 
 Rendering runs on a WebGL2 pipeline. A distance field of each layer's silhouette drives refraction and edge lighting; when Blur is on, two separable Gaussian passes blur everything beneath the layer, and the glass composite shader works in gamma-encoded sRGB, like Icon Composer. Without WebGL2 the app falls back to Canvas 2D: layers keep their shadow, translucency and edge lighting, but lose refraction and blur.
