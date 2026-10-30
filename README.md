@@ -6,7 +6,7 @@
 
 <p align="center">Design Liquid Glass app icons in the browser or on your Desktop.</p>
 
-<p align="center"><a href="https://liquid-composer.vercel.app"><b>liquid-composer.vercel.app</b></a></p>
+<p align="center"><a href="https://liquid-composer-new.vercel.app/"><b>liquid-composer-new.vercel.app</b></a></p>
 
 <p align="center"><img alt="Static build passing Badge" src="https://img.shields.io/badge/build-passing-brightgreen"> <img alt="Static supported os Badge" src="https://img.shields.io/badge/Supported%20OS-Windows%2C%20MacOS%2C%20Linux-blue"> <img alt="Static wesite Badge" src="https://img.shields.io/badge/Web-Live-green"></p>
 
