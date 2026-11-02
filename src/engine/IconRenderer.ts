@@ -5,10 +5,12 @@ import type {
     BackgroundConfig,
     AppearanceMode,
     LayerEffects,
+    IconPlatform,
 } from "../types/index";
 import type { LiquidGlassConfig } from "../types/index";
 import { squirclePath, createBackgroundCanvas } from "./ImageProcessor";
 import { LiquidGlassRenderer } from "./LiquidGlass";
+import { layersForPlatform, PLATFORM_PROFILES } from "./platforms";
 import {
     CHICLET_CLEAR_HIGHLIGHTS,
     CHICLET_HIGHLIGHTS,
@@ -1650,6 +1652,8 @@ export interface ExportOptions {
     allModes?: boolean;
     clipboard?: boolean;
     bare?: boolean;
+    platforms?: boolean;
+    platform?: IconPlatform;
 }
 
 const EXPORT_QUALITY = 0.95;
@@ -1696,7 +1700,19 @@ async function renderForExport(
 function canvasToBlob(
     canvas: HTMLCanvasElement,
     format: ExportFormat,
+    platform?: IconPlatform,
 ): Promise<Blob> {
+    if (platform === "watchos") {
+        // The editor preview is circular, so apply the same silhouette to the
+        // exported pixels rather than leaving a square Watch asset behind.
+        const ctx = canvas.getContext("2d")!;
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-in";
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
     if (format === "jpeg") {
         const ctx = canvas.getContext("2d")!;
         ctx.globalCompositeOperation = "destination-over";
@@ -1720,7 +1736,7 @@ export async function exportIcon(
     background: RenderContext["background"],
     lightAngle: number,
     mode: AppearanceMode,
-    { format, size, bare }: ExportOptions = { format: "png", size: 1024 },
+    { format, size, bare, platform }: ExportOptions = { format: "png", size: 1024 },
 ): Promise<Blob> {
     const renderSize = Math.max(size, Math.min(2048, Math.max(1024, size * 2)));
     try {
@@ -1732,7 +1748,7 @@ export async function exportIcon(
             renderSize,
             bare,
         );
-        return await canvasToBlob(downscale(rendered, size), format);
+        return await canvasToBlob(downscale(rendered, size), format, platform);
     } finally {
         releaseLargeScratch();
     }
@@ -1750,6 +1766,7 @@ export async function exportZip(
     layers: RenderContext["layers"],
     background: RenderContext["background"],
     lightAngle: number,
+    platform?: IconPlatform,
 ): Promise<Blob> {
     const files: Record<string, Uint8Array> = {};
     try {
@@ -1771,6 +1788,7 @@ export async function exportZip(
                     const blob = await canvasToBlob(
                         downscale(rendered, size),
                         "png",
+                        platform,
                     );
                     files[`${rendition}/icon-${size}.png`] = new Uint8Array(
                         await blob.arrayBuffer(),
@@ -1784,4 +1802,18 @@ export async function exportZip(
     return new Blob([zipSync(files, { level: 0 }) as Uint8Array<ArrayBuffer>], {
         type: "application/zip",
     });
+}
+
+/** A ready-to-import set of default PNG renditions for every Apple platform. */
+export async function exportPlatformZip(
+    layers: RenderContext['layers'],
+    background: RenderContext['background'],
+    lightAngle: number,
+): Promise<Blob> {
+    const files: Record<string, Uint8Array> = {};
+    for (const platform of PLATFORM_PROFILES) {
+        const blob = await exportIcon(layersForPlatform(layers, platform.id), background, lightAngle, 'default', { format: 'png', size: 1024, platform: platform.id });
+        files[`${platform.label}/icon-1024.png`] = new Uint8Array(await blob.arrayBuffer());
+    }
+    return new Blob([zipSync(files, { level: 0 }) as Uint8Array<ArrayBuffer>], { type: 'application/zip' });
 }

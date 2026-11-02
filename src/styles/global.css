@@ -324,6 +324,11 @@ details[open] > .glass-group-summary svg { transform: rotate(0); }
 .editor-background-popover { left: 0; width: 276px; padding: 0 0 4px; }
 .editor-popover-heading { padding: 12px 12px 2px; font-size: 12px; font-weight: 600; }
 .editor-settings-popover { left: 0; width: 220px; }
+.editor-platform-menu { left: 0; width: 260px; padding-top: 8px; }
+.editor-platform-heading { padding: 0 8px 2px; color: #f5f5f7; font-size: 12px; font-weight: 600; }
+.editor-platform-caption { padding: 0 8px 8px; color: #a1a1aa; font-size: 11px; line-height: 1.35; }
+.editor-platform-menu .editor-menu-item { gap: 7px; }
+.editor-platform-menu .editor-menu-item > svg:last-child { margin-left: 1px; }
 .editor-menu-item.editor-menu-danger { color: #ff6961; }
 .editor-menu-item.editor-menu-danger:hover, .editor-menu-item.editor-menu-danger:focus-visible { background: rgba(255, 69, 58, 0.12); }
 .editor-listbox { max-height: min(420px, calc(100vh - 16px)); overflow-y: auto; }
@@ -352,6 +357,9 @@ details[open] > .glass-group-summary svg { transform: rotate(0); }
 
 /* ── Canvas accessories ── */
 .canvas-controls { position: absolute; left: 16px; right: 16px; bottom: 20px; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; pointer-events: none; }
+.platform-canvas { overflow: hidden; transition: border-radius 180ms ease; }
+.platform-canvas-ios { border-radius: 26%; }
+.platform-canvas-watchos { border-radius: 50%; }
 .canvas-controls > * { pointer-events: auto; }
 .appearance-segments { display: flex; gap: 2px; padding: 3px; border-radius: 13px; }
 .appearance-segments { background: rgba(43, 43, 47, 0.88); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }

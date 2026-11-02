@@ -67,6 +67,10 @@ export interface LayerLayout {
   scale: number;
 }
 
+/** A shared icon can be positioned independently for each Apple platform. */
+export type IconPlatform = 'ios' | 'watchos';
+export type PlatformLayouts = Partial<Record<IconPlatform, LayerLayout>>;
+
 export interface Layer {
   id: string;
   name: string;
@@ -82,6 +86,8 @@ export interface Layer {
   fill: FillConfig;
   liquidGlass: LiquidGlassConfig;
   layout: LayerLayout;
+  /** Non-destructive position/scale overrides. Missing values inherit `layout`. */
+  platformLayouts?: PlatformLayouts;
 }
 
 export type BackgroundPreset = 'warm' | 'cool' | 'forest' | 'ocean' | 'sunset' | 'mono';

@@ -6,6 +6,8 @@ import {
     Sun,
     MagnifyingGlass,
     DownloadSimple,
+    DeviceMobile,
+    Watch,
 } from "@phosphor-icons/react";
 import type { ExportOptions } from "../../engine/IconRenderer";
 import {
@@ -31,7 +33,11 @@ import {
     ZOOM_LEVELS,
     LIGHT_ANGLE_LEVELS,
     LIGHT_ANGLE_LABELS,
+    $iconPlatform,
+    setIconPlatform,
 } from "../../store/uiStore";
+import { PLATFORM_PROFILES, platformProfile } from "../../engine/platforms";
+import type { IconPlatform } from "../../types/index";
 
 function toDisplayAngle(a: number): number {
     return ((90 - a + 540) % 360) - 180;
@@ -53,7 +59,7 @@ const FORMAT_LABEL: Record<ExportOptions["format"], string> = {
     png: "PNG",
     jpeg: "JPEG",
 };
-type ToolbarPopover = "background" | "light" | "zoom" | "export";
+type ToolbarPopover = "background" | "light" | "zoom" | "platform" | "export";
 
 function exportLabel(opt: ExportOptions): string {
     if (opt.clipboard) return "Copy PNG";
@@ -62,12 +68,18 @@ function exportLabel(opt: ExportOptions): string {
     return `${FORMAT_LABEL[opt.format]}${opt.size === 4096 ? " · 4K" : opt.size === 2048 ? " · 2K" : ""}`;
 }
 
+function PlatformIcon({ platform, size = 15 }: { platform: IconPlatform; size?: number }) {
+    return platform === "watchos" ? <Watch size={size} /> : <DeviceMobile size={size} />;
+}
+
 export function TopToolbar() {
     const name = useStore($iconName);
     const modified = useStore($iconModified);
     const lightAngle = useStore($lightAngle);
     const zoom = useStore($zoom);
     const bg = useStore($background);
+    const platform = useStore($iconPlatform);
+    const activePlatform = platformProfile(platform);
 
     const [openPopover, setOpenPopover] = useState<ToolbarPopover | null>(null);
     const [editingName, setEditingName] = useState(false);
@@ -77,6 +89,7 @@ export function TopToolbar() {
     const zoomMenuRef = useRef<HTMLDivElement>(null);
     const lightMenuRef = useRef<HTMLDivElement>(null);
     const exportMenuRef = useRef<HTMLDivElement>(null);
+    const platformMenuRef = useRef<HTMLDivElement>(null);
     const openIconRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -84,6 +97,7 @@ export function TopToolbar() {
         const refs = {
             background: bgPickerRef,
             zoom: zoomMenuRef,
+            platform: platformMenuRef,
             light: lightMenuRef,
             export: exportMenuRef,
         };
@@ -483,6 +497,39 @@ export function TopToolbar() {
                         )}
                     </div>
                 </div>
+                <div ref={platformMenuRef} className="relative">
+                    <button
+                        onClick={() => togglePopover("platform")}
+                        className="editor-tool-button"
+                        title="Platform preview and overrides"
+                        aria-haspopup="menu"
+                        aria-expanded={openPopover === "platform"}
+                        aria-controls="platform-menu">
+                        <PlatformIcon platform={platform} size={16} />
+                        <span>{activePlatform.shortLabel}</span>
+                        <CaretDown size={10} weight="bold" className="editor-chevron" />
+                    </button>
+                    {openPopover === "platform" && (
+                        <div id="platform-menu" role="menu" aria-label="Platform preview" className="editor-popover editor-menu editor-platform-menu" onKeyDown={handleMenuKeyDown}>
+                            <div className="editor-platform-heading">Platform variants</div>
+                            <p className="editor-platform-caption">Shared artwork · independent position and scale</p>
+                            {PLATFORM_PROFILES.map(profile => (
+                                <button
+                                    key={profile.id}
+                                    role="menuitemradio"
+                                    aria-checked={platform === profile.id}
+                                    tabIndex={-1}
+                                    onClick={() => { setIconPlatform(profile.id); setOpenPopover(null); }}
+                                    className="editor-menu-item">
+                                    <PlatformIcon platform={profile.id} />
+                                    <span>{profile.label}</span>
+                                    <span className="editor-menu-detail">{profile.artboard}</span>
+                                    <Check size={13} weight="bold" className={platform === profile.id ? "" : "invisible"} />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="editor-toolbar-actions">
@@ -535,6 +582,14 @@ export function TopToolbar() {
                                     </span>
                                 </button>
                             ))}
+                            <button
+                                role="menuitem"
+                                tabIndex={-1}
+                                onClick={() => exportAs({ format: "png", size: 1024, platforms: true })}
+                                className="editor-menu-item editor-menu-separated">
+                                <span>Apple platform set</span>
+                                <span className="editor-menu-detail">ZIP · 4 PNGs</span>
+                            </button>
                             <button
                                 role="menuitem"
                                 tabIndex={-1}

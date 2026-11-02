@@ -1,7 +1,7 @@
 import { atom, batch, effect } from 'nanostores';
 import { $layers, $background, $iconName, bgColorsFromHueTint } from './iconStore';
-import { $appearanceMode, $zoom, setAppearanceMode, setZoom, $persistenceEnabled } from './uiStore';
-import type { Layer, LayerEffects, BackgroundConfig, AppearanceMode } from '../types/index';
+import { $appearanceMode, $zoom, setAppearanceMode, setZoom, $persistenceEnabled, $iconPlatform, setIconPlatform } from './uiStore';
+import type { Layer, LayerEffects, BackgroundConfig, AppearanceMode, IconPlatform } from '../types/index';
 
 const STORAGE_KEY = 'liquid-composer-state';
 const ASSET_DB_NAME = 'liquid-composer-assets';
@@ -20,6 +20,7 @@ interface StoredAppData {
     ui: {
       appearanceMode: AppearanceMode;
       zoom: number;
+      platform?: IconPlatform;
     }
   }
 }
@@ -74,6 +75,7 @@ async function saveState() {
       ui: {
         appearanceMode: $appearanceMode.get(),
         zoom: $zoom.get(),
+        platform: $iconPlatform.get(),
       }
     }
   };
@@ -133,6 +135,8 @@ export async function initPersistence() {
           if (data.ui) {
             if (APPEARANCE_MODES.includes(data.ui.appearanceMode)) setAppearanceMode(data.ui.appearanceMode);
             if (data.ui.zoom !== undefined) setZoom(data.ui.zoom);
+            if (data.ui.platform === 'watchos') setIconPlatform('watchos');
+            else if (data.ui.platform === 'ios' || data.ui.platform === 'iphone' || data.ui.platform === 'ipad' || data.ui.platform === 'macos') setIconPlatform('ios');
           }
         });
       }
@@ -186,7 +190,7 @@ export async function initPersistence() {
   });
 
   let initialRun = true;
-  effect([$layers, $background, $iconName, $appearanceMode, $zoom, $persistenceEnabled], () => {
+  effect([$layers, $background, $iconName, $appearanceMode, $zoom, $iconPlatform, $persistenceEnabled], () => {
     if (initialRun) { initialRun = false; return; }
     debouncedSave();
   });

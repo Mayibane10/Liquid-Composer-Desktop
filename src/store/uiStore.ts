@@ -1,5 +1,5 @@
 import { atom } from 'nanostores';
-import type { AppearanceMode } from '../types/index';
+import type { AppearanceMode, IconPlatform } from '../types/index';
 
 export const ZOOM_LEVELS = [25, 50, 75, 100, 150, 200] as const;
 
@@ -30,6 +30,7 @@ export const $persistenceEnabled = atom<boolean>(true);
 export const $showAdvancedGlass = atom<boolean>(false);
 export const $showGrid = atom<boolean>(false);
 export const $gridStyle = atom<'light' | 'dark'>('light');
+export const $iconPlatform = atom<IconPlatform>('ios');
 export type Webgl2Status = 'inactive' | 'active' | 'error';
 export const $webgl2Status = atom<Webgl2Status>('inactive');
 export const $webgl2Error = atom<string>('');
@@ -49,6 +50,10 @@ export function setLightAngle(angle: number) {
 
 export function setZoom(zoom: number) {
   $zoom.set(Math.min(200, Math.max(10, zoom)));
+}
+
+export function setIconPlatform(platform: IconPlatform) {
+  $iconPlatform.set(platform);
 }
 
 export function stepZoom(direction: number) {

@@ -1,5 +1,5 @@
 import { atom, batch, computed } from 'nanostores';
-import { $selectedLayerId, selectLayer, CANVAS_SELECTION_ID } from './uiStore';
+import { $selectedLayerId, $iconPlatform, selectLayer, CANVAS_SELECTION_ID } from './uiStore';
 import type {
   Layer,
   BackgroundConfig,
@@ -160,8 +160,25 @@ export function removeLayer(id: string) {
 }
 
 export function updateLayer(id: string, updates: Partial<Layer>) {
+  const platform = $iconPlatform.get();
   $layers.set(
-    $layers.get().map((l) => (l.id === id ? { ...l, ...updates } : l))
+    $layers.get().map((l) => {
+      if (l.id !== id) return l;
+      // Layout changes on a platform are stored as an override, leaving the
+      // shared composition untouched for every other platform.
+      if (updates.layout) {
+        const { layout, ...rest } = updates;
+        return {
+          ...l,
+          ...rest,
+          platformLayouts: {
+            ...l.platformLayouts,
+            [platform]: { ...l.layout, ...l.platformLayouts?.[platform], ...layout },
+          },
+        };
+      }
+      return { ...l, ...updates };
+    })
   );
   $iconModified.set(true);
 }
@@ -252,8 +269,20 @@ export function arrangeLayer(id: string, direction: 'forward' | 'backward' | 'fr
 }
 
 export function nudgeLayer(id: string, dx: number, dy: number) {
+  const platform = $iconPlatform.get();
   $layers.set($layers.get().map((l) => (l.id === id || l.parentId === id) && l.type !== 'group'
-    ? { ...l, layout: { ...l.layout, x: l.layout.x + dx, y: l.layout.y + dy } }
+    ? {
+        ...l,
+        platformLayouts: {
+          ...l.platformLayouts,
+          [platform]: {
+            ...l.layout,
+            ...l.platformLayouts?.[platform],
+            x: (l.platformLayouts?.[platform]?.x ?? l.layout.x) + dx,
+            y: (l.platformLayouts?.[platform]?.y ?? l.layout.y) + dy,
+          },
+        },
+      }
     : l));
   $iconModified.set(true);
 }

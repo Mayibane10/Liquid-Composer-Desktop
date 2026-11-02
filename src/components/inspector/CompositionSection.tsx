@@ -1,7 +1,8 @@
 import { useEffect, useState, useId } from "react";
 import { useStore } from "@nanostores/react";
 import { $layers, updateLayer } from "../../store/iconStore";
-import { $selectedLayerId } from "../../store/uiStore";
+import { $selectedLayerId, $iconPlatform } from "../../store/uiStore";
+import { platformLayout, platformProfile } from "../../engine/platforms";
 import { NumberInput } from "../ui/NumberInput";
 import { Toggle } from "../ui/Toggle";
 import { Slider } from "../ui/Slider";
@@ -10,6 +11,7 @@ export function CompositionSection() {
     const nameId = useId();
     const selectedId = useStore($selectedLayerId);
     const layers = useStore($layers);
+    const platform = useStore($iconPlatform);
     const layer = layers.find(l => l.id === selectedId);
     const [nameValue, setNameValue] = useState(layer?.name ?? "");
 
@@ -26,7 +28,8 @@ export function CompositionSection() {
         else setNameValue(layer.name);
     };
 
-    const { layout, visible } = layer;
+    const layout = platformLayout(layer, platform);
+    const { visible } = layer;
     const isGroup = layer.type === "group";
 
     return (
@@ -36,7 +39,7 @@ export function CompositionSection() {
                     Composition
                 </span>
                 <span className="text-2xs text-[#636366] bg-white/[0.07] px-1.5 py-0.5 rounded">
-                    All
+                    {platformProfile(platform).shortLabel}
                 </span>
             </div>
 

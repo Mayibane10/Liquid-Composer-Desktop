@@ -1,50 +1,15 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useStore } from '@nanostores/react';
 import { $layers, $background, updateLayer, setHistoryGesture } from '../../store/iconStore';
-import { $appearanceMode, $lightAngle, $zoom, $selectedLayerId, $hoveredLayerId, $webgl2Status, $webgl2Error, $webgl2Restores, $showGrid, $gridStyle, selectLayer, stepZoom } from '../../store/uiStore';
-import { renderIconToCanvas, exportIcon, exportZip, type ExportOptions } from '../../engine/IconRenderer';
-import { drawSquirclePath } from '../../engine/ImageProcessor';
-import { CHICLET_SHADOW } from '../../engine/glassContract';
+import { $appearanceMode, $lightAngle, $zoom, $selectedLayerId, $hoveredLayerId, $webgl2Status, $webgl2Error, $webgl2Restores, $showGrid, $gridStyle, $iconPlatform, selectLayer, stepZoom } from '../../store/uiStore';
+import { renderIconToCanvas, exportIcon, exportZip, exportPlatformZip, type ExportOptions } from '../../engine/IconRenderer';
 import { $fileDropZone } from '../useFileDrop';
 import { BottomBar } from '../layout/BottomBar';
 import { GridFour, CircleHalf } from '@phosphor-icons/react';
 import type { Layer } from '../../types/index';
+import { layersForPlatform, platformProfile } from '../../engine/platforms';
 
 const ICON_BASE_SIZE = 750; // px at 100% zoom
-
-function IconShadow({ size }: { size: number }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const u = size / 1024;
-  const pad = Math.ceil((CHICLET_SHADOW.offsetY + 3 * CHICLET_SHADOW.radius) * u);
-  const side = size + 2 * pad;
-
-  useEffect(() => {
-    const ctx = canvasRef.current?.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, side, side);
-    drawSquirclePath(ctx, pad - side, pad, size);
-    ctx.shadowColor = `rgba(0,0,0,${CHICLET_SHADOW.opacity})`;
-    ctx.shadowBlur = 2 * CHICLET_SHADOW.radius * u;
-    ctx.shadowOffsetX = side;
-    ctx.shadowOffsetY = CHICLET_SHADOW.offsetY * u;
-    ctx.fill();
-    ctx.shadowColor = 'transparent';
-    ctx.globalCompositeOperation = 'destination-out';
-    drawSquirclePath(ctx, pad, pad, size);
-    ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
-  }, [size, side, pad, u]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={side}
-      height={side}
-      className="absolute pointer-events-none"
-      style={{ left: -pad, top: -pad, width: side, height: side }}
-    />
-  );
-}
 
 function GridOverlay({ size, dark }: { size: number; dark: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -155,6 +120,10 @@ export function IconCanvas() {
   const webgl2Restores = useStore($webgl2Restores);
   const showGrid = useStore($showGrid);
   const gridStyle = useStore($gridStyle);
+  const platform = useStore($iconPlatform);
+  const effectiveLayers = layersForPlatform(layers, platform);
+  const profile = platformProfile(platform);
+  const previewRadius = profile.previewClass === 'watchos' ? '50%' : profile.previewClass === 'macos' ? '22%' : '26%';
   const [snapGuide, setSnapGuide] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
   const over = useStore($fileDropZone) === 'canvas';
 
@@ -182,7 +151,7 @@ export function IconCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const params = { layers, background, lightAngle, appearanceMode: mode, size: renderSize };
+    const params = { layers: effectiveLayers, background, lightAngle, appearanceMode: mode, size: renderSize };
 
     const run = () => {
       renderingRef.current = true;
@@ -202,7 +171,7 @@ export function IconCanvas() {
       pendingRef.current = null;
       run();
     }
-  }, [layers, background, lightAngle, mode, renderSize, webgl2Restores]);
+  }, [effectiveLayers, background, lightAngle, mode, renderSize, webgl2Restores]);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -218,26 +187,28 @@ export function IconCanvas() {
     const handler = async (e: Event) => {
       const options = (e as CustomEvent<ExportOptions | null>).detail ?? { format: 'png', size: 1024 };
       if (options.clipboard) {
-        const png = exportIcon(layers, background, lightAngle, mode, { ...options, format: 'png' });
+        const png = await exportIcon(effectiveLayers, background, lightAngle, mode, { ...options, platform, format: 'png' });
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]).catch(console.error);
         return;
       }
-      const blob = await (options.allModes
-        ? exportZip(layers, background, lightAngle)
-        : exportIcon(layers, background, lightAngle, mode, options)
+      const blob = await (options.platforms
+        ? exportPlatformZip(layers, background, lightAngle)
+        : options.allModes
+          ? exportZip(effectiveLayers, background, lightAngle, platform)
+          : exportIcon(effectiveLayers, background, lightAngle, mode, { ...options, platform })
       ).catch((err: unknown) => { console.error(err); return null; });
       if (!blob) return;
-      const ext = blob.type.replace('image/', '').replace('jpeg', 'jpg');
+      const ext = options.platforms || options.allModes ? 'zip' : options.format === 'jpeg' ? 'jpg' : 'png';
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = options.allModes ? 'icon.zip' : `icon-${options.size}.${ext}`;
+      a.download = options.platforms || options.allModes ? 'icon.zip' : `icon-${options.size}.${ext}`;
       a.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
     window.addEventListener('icon-export', handler);
     return () => window.removeEventListener('icon-export', handler);
-  }, [layers, background, lightAngle, mode]);
+  }, [layers, effectiveLayers, background, lightAngle, mode]);
 
   const hitTestLayer = useCallback(async (layer: { blobUrl?: string; layout: { x: number; y: number; scale: number } }, nx: number, ny: number): Promise<boolean> => {
     if (!layer.blobUrl) return false;
@@ -257,7 +228,7 @@ export function IconCanvas() {
     const target = e.currentTarget as HTMLDivElement;
 
     const alreadySelected = selectedLayerId
-      ? layers.find(l => l.id === selectedLayerId && l.visible && l.type !== 'group' && l.blobUrl)
+      ? effectiveLayers.find(l => l.id === selectedLayerId && l.visible && l.type !== 'group' && l.blobUrl)
       : null;
 
     if (alreadySelected) {
@@ -282,7 +253,7 @@ export function IconCanvas() {
     }
 
     // Slow path: async hit test all visible layers
-    const visibleLayers = [...layers].filter((l) => l.visible && l.type !== 'group' && l.blobUrl)
+    const visibleLayers = [...effectiveLayers].filter((l) => l.visible && l.type !== 'group' && l.blobUrl)
       .sort((a, b) => b.order - a.order);
 
     let hitId: string | null = null;
@@ -293,7 +264,7 @@ export function IconCanvas() {
 
     if (hitId) {
       selectLayer(hitId);
-      const layer = layers.find((l) => l.id === hitId)!;
+      const layer = effectiveLayers.find((l) => l.id === hitId)!;
       dragState.current = {
         layerId: hitId,
         startX: e.clientX,
@@ -308,7 +279,7 @@ export function IconCanvas() {
     } else {
       selectLayer(null);
     }
-  }, [layers, iconSize, hitTestLayer, selectedLayerId]);
+  }, [effectiveLayers, iconSize, hitTestLayer, selectedLayerId]);
 
   const hoverRafRef = useRef(0);
   const iconAreaRef = useRef<HTMLDivElement>(null);
@@ -329,7 +300,7 @@ export function IconCanvas() {
         const rect = el.getBoundingClientRect();
         const nx = (clientX - rect.left) / iconSize;
         const ny = (clientY - rect.top) / iconSize;
-        const visibleLayers = [...layers]
+        const visibleLayers = [...effectiveLayers]
           .filter((l) => l.visible && l.type !== 'group' && l.blobUrl)
           .sort((a, b) => b.order - a.order);
         let hitId: string | null = null;
@@ -367,7 +338,7 @@ export function IconCanvas() {
     ds.pendingY = newY;
 
     if (outlineImgRef.current) {
-      const layer = layers.find(l => l.id === ds.layerId);
+      const layer = effectiveLayers.find(l => l.id === ds.layerId);
       const scale = layer?.layout.scale ?? 100;
       outlineImgRef.current.style.transform =
         `translate(${(newX / 100) * iconSize}px, ${(newY / 100) * iconSize}px) scale(${scale / 100})`;
@@ -377,13 +348,13 @@ export function IconCanvas() {
       ds.rafId = requestAnimationFrame(() => {
         ds.rafId = 0;
         if (!dragState.current) return;
-        const dragged = layers.find((l) => l.id === dragState.current!.layerId);
+        const dragged = effectiveLayers.find((l) => l.id === dragState.current!.layerId);
         if (!dragged) return;
         updateLayer(dragged.id, { layout: { ...dragged.layout, x: dragState.current.pendingX, y: dragState.current.pendingY } });
         setHistoryGesture(true);
       });
     }
-  }, [layers, iconSize]);
+  }, [effectiveLayers, iconSize]);
 
   const handleCanvasPointerUp = useCallback(() => {
     dragState.current = null;
@@ -430,14 +401,13 @@ export function IconCanvas() {
       <div
         ref={iconAreaRef}
         data-icon-area
-        className="relative"
+        className={`relative platform-canvas platform-canvas-${profile.previewClass}`}
         style={{ width: iconSize, height: iconSize }}
         onPointerDown={handleCanvasPointerDown}
         onPointerMove={handleCanvasPointerMove}
         onPointerUp={handleCanvasPointerUp}
         onPointerLeave={() => { if (!dragState.current) $hoveredLayerId.set(null); }}
       >
-        <IconShadow size={iconSize} />
         <canvas
           ref={canvasRef}
           width={renderSize}
@@ -447,7 +417,7 @@ export function IconCanvas() {
             height: iconSize,
             position: 'relative',
             zIndex: 1,
-            borderRadius: '26%',
+            borderRadius: previewRadius,
           }}
           className="block"
         />
@@ -455,7 +425,7 @@ export function IconCanvas() {
 
         {(() => {
           const outlineId = hoveredLayerId ?? selectedLayerId;
-          const outlineLayer = outlineId ? layers.find((l) => l.id === outlineId) : null;
+          const outlineLayer = outlineId ? effectiveLayers.find((l) => l.id === outlineId) : null;
           if (!outlineLayer?.blobUrl) return null;
           const isHover = outlineId === hoveredLayerId && outlineId !== selectedLayerId;
           const k = 100 / outlineLayer.layout.scale;
