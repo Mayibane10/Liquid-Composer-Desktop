@@ -916,7 +916,7 @@ function drawContentTranslucent(
     contentCanvas: HTMLCanvasElement,
     frame: Frame,
     translucency: number,
-    gradient?: NonNullable<LiquidGlassConfig['translucencyGradient']>,
+    gradient?: NonNullable<LiquidGlassConfig["translucencyGradient"]>,
 ): void {
     if ((!gradient?.enabled && translucency <= 0) || frame.h <= 0)
         return drawContentFlat(outCtx, contentCanvas);
@@ -927,17 +927,24 @@ function drawContentTranslucent(
     ctx.drawImage(contentCanvas, 0, 0);
     ctx.globalCompositeOperation = "destination-in";
     if (gradient?.enabled) {
-        const angle = gradient.angle * Math.PI / 180;
+        const angle = (gradient.angle * Math.PI) / 180;
         const dx = Math.cos(angle);
         const dy = Math.sin(angle);
         const extent = Math.abs(dx) * frame.w + Math.abs(dy) * frame.h;
         const cx = frame.x + frame.w / 2;
         const cy = frame.y + frame.h / 2;
-        const grad = ctx.createLinearGradient(cx - dx * extent / 2, cy - dy * extent / 2, cx + dx * extent / 2, cy + dy * extent / 2);
+        const grad = ctx.createLinearGradient(
+            cx - (dx * extent) / 2,
+            cy - (dy * extent) / 2,
+            cx + (dx * extent) / 2,
+            cy + (dy * extent) / 2,
+        );
         const start = Math.max(0, Math.min(99, gradient.start)) / 100;
         const end = Math.max(start + 0.01, Math.min(100, gradient.end)) / 100;
-        const startOpacity = Math.max(0, Math.min(100, gradient.startOpacity)) / 100;
-        const endOpacity = Math.max(0, Math.min(100, gradient.endOpacity)) / 100;
+        const startOpacity =
+            Math.max(0, Math.min(100, gradient.startOpacity)) / 100;
+        const endOpacity =
+            Math.max(0, Math.min(100, gradient.endOpacity)) / 100;
         grad.addColorStop(0, `rgba(0,0,0,${startOpacity})`);
         grad.addColorStop(start, `rgba(0,0,0,${startOpacity})`);
         grad.addColorStop(end, `rgba(0,0,0,${endOpacity})`);
@@ -1121,7 +1128,10 @@ async function renderLayerToCanvas(
             colorMode ? contentCanvas : encodeClearContent(contentCanvas),
             frame,
             translucency,
-            liquidGlass.translucency.enabled && liquidGlass.translucencyGradient?.enabled ? liquidGlass.translucencyGradient : undefined,
+            liquidGlass.translucency.enabled &&
+                liquidGlass.translucencyGradient?.enabled
+                ? liquidGlass.translucencyGradient
+                : undefined,
         );
         if (colorMode)
             drawLayerBevel(
@@ -1151,7 +1161,11 @@ async function renderLayerToCanvas(
             : 0,
         frostiness: colorMode ? fx.frostiness / 100 : 0,
         translucency,
-        translucencyGradient: liquidGlass.translucency.enabled && liquidGlass.translucencyGradient?.enabled ? liquidGlass.translucencyGradient : undefined,
+        translucencyGradient:
+            liquidGlass.translucency.enabled &&
+            liquidGlass.translucencyGradient?.enabled
+                ? liquidGlass.translucencyGradient
+                : undefined,
         layerBounds: [
             frame.x / size,
             frame.y / size,
@@ -1268,6 +1282,8 @@ async function renderIconToCanvasImpl(
             { offset: 1, color: SYSTEM_GRADIENT.dark[1] },
         ],
         angle: 90,
+        lightAngle: background.lightAngle ?? 315,
+        lightIntensity: background.lightIntensity ?? 0,
     };
     const clearMaskBg: BackgroundConfig = { type: "solid", color: "#00ff00" };
     const bgEntry = getCachedBgCanvas(
