@@ -151,6 +151,7 @@ export function BackgroundControls() {
     const storeBrightness = bg.brightness ?? 100;
     const storeLightAngle = bg.lightAngle ?? 315;
     const storeLightIntensity = bg.lightIntensity ?? 0;
+    const storeGradientAngle = bg.angle ?? 90;
 
     const [localBgType, setLocalBgType] = useState(storeBgType);
     const [localStops, setLocalStops] = useState<Stop[]>(storeStops);
@@ -159,10 +160,12 @@ export function BackgroundControls() {
     const [localBrightness, setLocalBrightness] = useState(storeBrightness);
     const [lightAngle, setLightAngle] = useState(storeLightAngle);
     const [lightIntensity, setLightIntensity] = useState(storeLightIntensity);
+    const [gradientAngle, setGradientAngle] = useState(storeGradientAngle);
 
     const hue = localHue;
     const tint = localTint;
     const brightness = localBrightness;
+
     const bgValuesRef = useRef({
         type: storeBgType,
         stops: storeStops,
@@ -171,7 +174,9 @@ export function BackgroundControls() {
         brightness: storeBrightness,
         lightAngle: storeLightAngle,
         lightIntensity: storeLightIntensity,
+        gradientAngle: storeGradientAngle,
     });
+
     const rafRef = useRef(0);
 
     const applyUpdate = useCallback(() => {
@@ -185,7 +190,7 @@ export function BackgroundControls() {
                 type: "gradient",
                 bgType: "custom",
                 stops: v.stops,
-                angle: 90,
+                angle: v.gradientAngle,
                 ...common,
             });
         } else {
@@ -196,7 +201,7 @@ export function BackgroundControls() {
                 tint: v.tint,
                 brightness: v.brightness,
                 colors: bgColorsFromHueTint(v.hue, v.tint, v.brightness),
-                angle: 90,
+                angle: v.gradientAngle,
                 ...common,
             });
         }
@@ -229,6 +234,7 @@ export function BackgroundControls() {
         setLocalBrightness(storeBrightness);
         setLightAngle(storeLightAngle);
         setLightIntensity(storeLightIntensity);
+        setGradientAngle(storeGradientAngle);
         bgValuesRef.current = {
             type: storeBgType,
             stops: storeStops,
@@ -237,6 +243,7 @@ export function BackgroundControls() {
             brightness: storeBrightness,
             lightAngle: storeLightAngle,
             lightIntensity: storeLightIntensity,
+            gradientAngle: storeGradientAngle,
         };
     }, [bg]);
 
@@ -355,6 +362,11 @@ export function BackgroundControls() {
             lightAngle: angle,
             lightIntensity: intensity,
         };
+        scheduleUpdate();
+    };
+    const updateGradientAngle = (angle: number) => {
+        setGradientAngle(angle);
+        bgValuesRef.current = { ...bgValuesRef.current, gradientAngle: angle };
         scheduleUpdate();
     };
 
@@ -600,6 +612,46 @@ export function BackgroundControls() {
                         </div>
                     </div>
                     <div className="border-t border-white/[0.08] pt-3 space-y-2">
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <label
+                                    htmlFor="bg-gradient-angle"
+                                    className="text-xs text-white/65">
+                                    Gradient orientation
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="359"
+                                    value={gradientAngle}
+                                    aria-label="Gradient orientation in degrees"
+                                    onChange={e => {
+                                        if (e.target.value === "") return;
+                                        updateGradientAngle(
+                                            Math.max(
+                                                0,
+                                                Math.min(
+                                                    359,
+                                                    Number(e.target.value),
+                                                ),
+                                            ),
+                                        );
+                                    }}
+                                    className="w-16 text-right text-xs font-mono bg-[#1a1a1c] border border-white/10 rounded px-1.5 py-1 text-white"
+                                />
+                            </div>
+                            <input
+                                id="bg-gradient-angle"
+                                type="range"
+                                min="0"
+                                max="359"
+                                value={gradientAngle}
+                                onChange={e =>
+                                    updateGradientAngle(Number(e.target.value))
+                                }
+                                className="w-full accent-[#0a84ff]"
+                            />
+                        </div>
                         <span
                             className="text-[10px] font-semibold uppercase tracking-widest block"
                             style={{ color: "rgba(255,255,255,0.45)" }}>
@@ -611,9 +663,27 @@ export function BackgroundControls() {
                                 className="text-xs text-white/65">
                                 Direction
                             </label>
-                            <span className="text-xs text-white/50 font-mono">
-                                {lightAngle}°
-                            </span>
+                            <input
+                                type="number"
+                                min="0"
+                                max="359"
+                                value={lightAngle}
+                                aria-label="Light direction in degrees"
+                                onChange={e => {
+                                    if (e.target.value === "") return;
+                                    updateLight(
+                                        Math.max(
+                                            0,
+                                            Math.min(
+                                                359,
+                                                Number(e.target.value),
+                                            ),
+                                        ),
+                                        lightIntensity,
+                                    );
+                                }}
+                                className="w-16 text-right text-xs font-mono bg-[#1a1a1c] border border-white/10 rounded px-1.5 py-1 text-white"
+                            />
                         </div>
                         <input
                             id="bg-light-angle"
@@ -635,9 +705,27 @@ export function BackgroundControls() {
                                 className="text-xs text-white/65">
                                 Intensity
                             </label>
-                            <span className="text-xs text-white/50 font-mono">
-                                {lightIntensity}%
-                            </span>
+                            <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={lightIntensity}
+                                aria-label="Light intensity percentage"
+                                onChange={e => {
+                                    if (e.target.value === "") return;
+                                    updateLight(
+                                        lightAngle,
+                                        Math.max(
+                                            0,
+                                            Math.min(
+                                                100,
+                                                Number(e.target.value),
+                                            ),
+                                        ),
+                                    );
+                                }}
+                                className="w-16 text-right text-xs font-mono bg-[#1a1a1c] border border-white/10 rounded px-1.5 py-1 text-white"
+                            />
                         </div>
                         <input
                             id="bg-light-intensity"
