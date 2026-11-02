@@ -1,6 +1,5 @@
 import { CHICLET_CORNER_RADIUS } from './glassContract';
 
-// ── Continuous corner: circular arc between two cubics, curve starts 1.52866·r from the corner ──
 const CORNER = (() => {
   const s = 0.52866;
   const beta = (Math.PI / 4) * s;
@@ -17,10 +16,8 @@ function traceSquircle(path: CanvasPath, x: number, y: number, size: number) {
   const r = Math.min(CHICLET_CORNER_RADIUS, 0.5 / p) * size;
   const e = p - a - b - c;
   const corners: [number, number, number, number, number, number][] = [
-    [x + size, y, -1, 0, 0, 1],
-    [x + size, y + size, 0, -1, -1, 0],
-    [x, y + size, 1, 0, 0, -1],
-    [x, y, 0, 1, 1, 0],
+    [x + size, y, -1, 0, 0, 1], [x + size, y + size, 0, -1, -1, 0],
+    [x, y + size, 1, 0, 0, -1], [x, y, 0, 1, 1, 0],
   ];
   path.moveTo(x + p * r, y);
   for (const [kx, ky, ux, uy, vx, vy] of corners) {
@@ -42,7 +39,6 @@ export function drawSquirclePath(ctx: CanvasRenderingContext2D, x: number, y: nu
 }
 
 const squircleCache = new Map<number, Path2D>();
-
 export function squirclePath(size: number): Path2D {
   let path = squircleCache.get(size);
   if (!path) {
@@ -55,7 +51,16 @@ export function squirclePath(size: number): Path2D {
 }
 
 export function createBackgroundCanvas(
-  config: { type: string; bgType?: 'preset' | 'custom'; stops?: { offset: number; color: string }[]; colors?: [string, string]; color?: string; angle?: number },
+  config: {
+    type: string;
+    bgType?: 'preset' | 'custom';
+    stops?: { offset: number; color: string }[];
+    colors?: [string, string];
+    color?: string;
+    angle?: number;
+    lightAngle?: number;
+    lightIntensity?: number;
+  },
   width: number,
   height: number
 ): HTMLCanvasElement {
@@ -71,20 +76,17 @@ export function createBackgroundCanvas(
     const r = (Math.abs(cos) * width + Math.abs(sin) * height) / 2;
     const cx = width / 2;
     const cy = height / 2;
-    const grad = ctx.createLinearGradient(
-      cx - cos * r, cy - sin * r,
-      cx + cos * r, cy + sin * r
-    );
-    
-    if (config.bgType === 'custom' && config.stops && config.stops.length > 0) {
-      config.stops.forEach((stop) => {
+    const grad = ctx.createLinearGradient(cx - cos * r, cy - sin * r, cx + cos * r, cy + sin * r);
+
+    if (config.bgType === 'custom' && config.stops?.length) {
+      // Sorting keeps user-adjustable stop positions valid for CanvasGradient.
+      [...config.stops].sort((a, b) => a.offset - b.offset).forEach((stop) => {
         grad.addColorStop(Math.max(0, Math.min(1, stop.offset)), stop.color);
       });
     } else if (config.colors) {
       grad.addColorStop(0, config.colors[0]);
       grad.addColorStop(1, config.colors[1]);
     }
-    
     ctx.fillStyle = grad;
   } else if (config.type === 'solid' && config.color) {
     ctx.fillStyle = config.color;
@@ -93,5 +95,32 @@ export function createBackgroundCanvas(
   }
 
   ctx.fillRect(0, 0, width, height);
+
+  // A soft directional overlay gives the background a subtle light source.
+  // Intensity defaults to zero, preserving the existing appearance.
+  const intensity = Math.max(0, Math.min(100, config.lightIntensity ?? 0));
+  if (intensity > 0) {
+    const angle = ((config.lightAngle ?? 315) * Math.PI) / 180;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const radius = Math.sqrt(width * width + height * height) / 2;
+    const cx = width / 2;
+    const cy = height / 2;
+    const startX = cx - dx * radius;
+    const startY = cy - dy * radius;
+    const endX = cx + dx * radius;
+    const endY = cy + dy * radius;
+    const light = ctx.createLinearGradient(startX, startY, endX, endY);
+    const alpha = (intensity / 100) * 0.48;
+    light.addColorStop(0, `rgba(0,0,0,${alpha * 0.7})`);
+    light.addColorStop(0.48, 'rgba(255,255,255,0)');
+    light.addColorStop(1, `rgba(255,255,255,${alpha})`);
+    ctx.save();
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = light;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  }
+
   return canvas;
 }

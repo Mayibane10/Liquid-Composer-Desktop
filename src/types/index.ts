@@ -1,27 +1,14 @@
 export type BlendMode =
-  | 'normal'
-  | 'multiply'
-  | 'screen'
-  | 'overlay'
-  | 'darken'
-  | 'lighten'
-  | 'color-dodge'
-  | 'color-burn'
-  | 'hard-light'
-  | 'soft-light'
-  | 'difference'
-  | 'exclusion'
-  | 'hue'
-  | 'saturation'
-  | 'color'
-  | 'luminosity'
-  | 'plus-lighter';
+  | 'normal' | 'multiply' | 'screen' | 'overlay' | 'darken' | 'lighten'
+  | 'color-dodge' | 'color-burn' | 'hard-light' | 'soft-light'
+  | 'difference' | 'exclusion' | 'hue' | 'saturation' | 'color'
+  | 'luminosity' | 'plus-lighter';
 
 export type AppearanceMode = 'default' | 'dark' | 'clear' | 'clearDark';
 
 export interface ColorStop {
-  offset: number; // 0-1
-  color: string;  // hex
+  offset: number;
+  color: string;
 }
 
 export type FillConfig =
@@ -30,47 +17,43 @@ export type FillConfig =
   | { type: 'gradient'; stops: ColorStop[]; angle: number };
 
 export interface LayerEffects {
-  domeIntensity: number;       // 0-100
-  domeRadius: number;          // % of size
-  innerRimWidth: number;       // % of size
-  innerRimLitAlpha: number;    // 0-100
-  innerRimShadowAlpha: number; // 0-100
-  innerShadowWidth: number;    // % of size
-  innerShadowAlpha: number;    // 0-100
-  outerBorderWidth: number;    // % of size
-  outerBorderAlpha: number;    // 0-100
-  specularEdge: number;        // 0-100
-  rimIntensity: number;        // 0-100
-  bottomHighlight: number;     // 0-100
-  envReflection: number;       // 0-100
-  innerGlow: number;           // 0-100
-  ambientRim: number;          // 0-100
-  aoDarken: number;            // 0-100
-  frostiness: number;          // 0-100
-  edgeDarken: number;          // 0-100
-  bevel: number;               // % of size
-  refraction: number;          // -100..100
-  keyHighlight: number;        // 0-100
-  fillHighlight: number;       // 0-100
-  darklight: number;           // 0-100
+  domeIntensity: number;
+  domeRadius: number;
+  innerRimWidth: number;
+  innerRimLitAlpha: number;
+  innerRimShadowAlpha: number;
+  innerShadowWidth: number;
+  innerShadowAlpha: number;
+  outerBorderWidth: number;
+  outerBorderAlpha: number;
+  specularEdge: number;
+  rimIntensity: number;
+  bottomHighlight: number;
+  envReflection: number;
+  innerGlow: number;
+  ambientRim: number;
+  aoDarken: number;
+  frostiness: number;
+  edgeDarken: number;
+  bevel: number;
+  refraction: number;
+  keyHighlight: number;
+  fillHighlight: number;
+  darklight: number;
 }
 
 export interface LiquidGlassConfig {
   enabled: boolean;
   mode: 'individual' | 'all';
-  specular: boolean | 'inside' | 'outside'; // true = automatic
+  specular: boolean | 'inside' | 'outside';
   blur: { enabled: boolean; value: number };
   translucency: { enabled: boolean; value: number };
   translucencyGradient?: { enabled: boolean; angle: number; start: number; end: number; startOpacity: number; endOpacity: number };
   dark: { enabled: boolean; value: number };
   mono: { enabled: boolean; value: number };
-  shadow: {
-    enabled: boolean;
-    value: number;
-    type?: 'chromatic' | 'neutral';
-  };
-  aberration?: number;        // 0-100
-  specularIntensity?: number; // 0-100
+  shadow: { enabled: boolean; value: number; type?: 'chromatic' | 'neutral' };
+  aberration?: number;
+  specularIntensity?: number;
   effects?: Partial<LayerEffects>;
   refraction?: { enabled: boolean };
   fresnel?: { enabled: boolean; range: number; factor: number; hardness: number };
@@ -94,7 +77,7 @@ export interface Layer {
   collapsed?: boolean;
   blobUrl?: string;
   sourceFile?: string;
-  opacity: number;    // 0-100
+  opacity: number;
   blendMode: BlendMode;
   fill: FillConfig;
   liquidGlass: LiquidGlassConfig;
@@ -109,11 +92,15 @@ export interface BackgroundConfig {
   stops?: ColorStop[];
   preset?: BackgroundPreset;
   color?: string;
-  colors?: [string, string]; // gradient start/end
+  colors?: [string, string];
   angle?: number;
-  hue?: number;        // 0–360
-  tint?: number;       // 0–100, 0 = vibrant, 100 = very pale
-  brightness?: number; // 0–100, 0 = black, 100 = full brightness (default 100)
+  hue?: number;
+  tint?: number;
+  brightness?: number;
+  /** Direction of the background's soft lighting overlay, in degrees. */
+  lightAngle?: number;
+  /** Strength of the background's soft lighting overlay, from 0 to 100. */
+  lightIntensity?: number;
 }
 
 export interface AppearanceOverride {
