@@ -8,7 +8,8 @@
 
 <p align="center"><a href="https://liquid-composer-new.vercel.app/"><b>liquid-composer-new.vercel.app</b></a></p>
 
-<p align="center"><img alt="Static build passing Badge" src="https://img.shields.io/badge/build-passing-brightgreen"> <img alt="Static supported os Badge" src="https://img.shields.io/badge/Supported%20OS-Windows%2C%20MacOS%2C%20Linux-blue">  <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript icon"> <img alt="Static wesite Badge" src="https://img.shields.io/badge/Web-Live-green"> </p>
+<p align="center"><img alt="Static build passing Badge" src="https://img.shields.io/badge/Build-Passing-brightgreen"> <img alt="Static supported os Badge" src="https://img.shields.io/badge/Supported%20OS-Windows-blue"> <img alt="Static Badge" src="https://img.shields.io/badge/Supported%3B%20No%20release-macOS%2C%20Linux-orange">
+ <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript icon"> <img alt="Static wesite Badge" src="https://img.shields.io/badge/Web-Live-green"> </p>
 
 <h3 align="center" > Thanks to <a href="https://github.com/frontedu"><b>@Frontedu</b> </a> For original Implementation</h3>
 
