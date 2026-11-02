@@ -573,9 +573,28 @@ export function BackgroundControls() {
                                         }
                                         className="flex-1 accent-[#0a84ff]"
                                     />
-                                    <span className="text-[10px] text-white/55 font-mono w-9 text-right">
-                                        {Math.round(stop.offset * 100)}%
-                                    </span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        value={Math.round(stop.offset * 100)}
+                                        aria-label={`Gradient stop ${i + 1} position percentage`}
+                                        onChange={e => {
+                                            if (e.target.value === "") return;
+                                            handleStopOffset(
+                                                i,
+                                                Math.max(
+                                                    0,
+                                                    Math.min(
+                                                        100,
+                                                        Number(e.target.value),
+                                                    ),
+                                                ) / 100,
+                                            );
+                                        }}
+                                        className="w-14 text-right text-[10px] font-mono bg-[#1a1a1c] border border-white/10 rounded px-1.5 py-1 text-white"
+                                    />
                                 </div>
                             </div>
                         ))}
