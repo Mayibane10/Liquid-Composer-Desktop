@@ -151,7 +151,7 @@ export function BackgroundControls() {
     const storeBrightness = bg.brightness ?? 100;
     const storeLightAngle = bg.lightAngle ?? 315;
     const storeLightIntensity = bg.lightIntensity ?? 0;
-    const storeGradientAngle = bg.angle ?? 90;
+    const storeGradientAngle = bg.angle ?? 270;
 
     const [localBgType, setLocalBgType] = useState(storeBgType);
     const [localStops, setLocalStops] = useState<Stop[]>(storeStops);

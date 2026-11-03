@@ -14,6 +14,8 @@ import { layersForPlatform, PLATFORM_PROFILES } from "./platforms";
 import {
     CHICLET_CLEAR_HIGHLIGHTS,
     CHICLET_HIGHLIGHTS,
+    CHICLET_DARK_HIGHLIGHTS,
+    CHICLET_WATCH_HIGHLIGHTS,
     CHICLET_LIGHT_LONGITUDE,
     CHICLET_LUMINANCE,
     CLEAR_MODE,
@@ -1477,9 +1479,18 @@ async function renderIconToCanvasImpl(
 
     // ── Chiclet highlights: white (blue in the Clear mask) plus-lighter, then black plus-darker as invert → add → invert ──
     if (!bare) {
+        const watchHighlights = ctx.platform === "watchos";
         const { light, dark } = isClear
             ? getChicletHighlights(CHICLET_CLEAR_HIGHLIGHTS, "#0000ff")
-            : getChicletHighlights(CHICLET_HIGHLIGHTS, "#ffffff");
+            : getChicletHighlights(
+                  watchHighlights
+                      ? CHICLET_WATCH_HIGHLIGHTS
+                      : appearanceMode === "dark"
+                        ? CHICLET_DARK_HIGHLIGHTS
+                        : CHICLET_HIGHLIGHTS,
+                  "#ffffff",
+                  watchHighlights,
+              );
         c.fillStyle = "#ffffff";
         c.globalCompositeOperation = "lighter";
         c.drawImage(light, 0, 0, size, size);
@@ -1531,6 +1542,7 @@ function drawChicletBand(
     size: number,
     distance: number,
     bias: number,
+    circle = false,
 ): void {
     const h = (distance * size) / 1024;
     const rings = Math.ceil(h);
@@ -1544,7 +1556,13 @@ function drawChicletBand(
     for (let j = 1; j <= rings; j++) {
         ctx.strokeStyle = `rgba(255,255,255,${(level(j) - level(j + 1)) / 255})`;
         ctx.lineWidth = (2 * j * h) / rings;
-        ctx.stroke(squirclePath(size));
+        if (circle) {
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, size / 2 - h, 0, Math.PI * 2);
+            ctx.stroke();
+        } else {
+            ctx.stroke(squirclePath(size));
+        }
     }
 }
 
@@ -1570,6 +1588,7 @@ const chicletHighlights = new Map<
 function getChicletHighlights(
     set: readonly ChicletHighlight[],
     lightColor: string,
+    circle = false,
 ): ChicletHighlightCanvases {
     const cached = chicletHighlights.get(set);
     if (cached) return cached;
@@ -1589,7 +1608,7 @@ function getChicletHighlights(
     let bandKey = "";
     for (const s of specs) {
         if (`${s.distance}:${s.bias}` !== bandKey) {
-            drawChicletBand(bc, size, s.distance, s.bias);
+            drawChicletBand(bc, size, s.distance, s.bias, circle);
             bandKey = `${s.distance}:${s.bias}`;
         }
         hc.globalCompositeOperation = "copy";
@@ -1681,6 +1700,7 @@ async function renderForExport(
     mode: AppearanceMode,
     renderSize: number,
     bare = false,
+    platform?: IconPlatform,
 ): Promise<HTMLCanvasElement> {
     const rendered = document.createElement("canvas");
     await renderIconToCanvas(
@@ -1691,6 +1711,7 @@ async function renderForExport(
             lightAngle,
             appearanceMode: mode,
             size: renderSize,
+            platform,
         },
         bare,
     );
@@ -1747,6 +1768,7 @@ export async function exportIcon(
             mode,
             renderSize,
             bare,
+            platform,
         );
         return await canvasToBlob(downscale(rendered, size), format, platform);
     } finally {
@@ -1781,6 +1803,8 @@ export async function exportZip(
                     lightAngle,
                     mode,
                     renderSize,
+                    false,
+                    platform,
                 );
                 for (const size of ZIP_SIZES.filter(
                     s => s > 2048 === renderSize > 2048,

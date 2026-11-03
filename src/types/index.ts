@@ -141,4 +141,5 @@ export interface RenderContext {
   lightAngle: number;
   appearanceMode: AppearanceMode;
   size: number;
+  platform?: IconPlatform;
 }

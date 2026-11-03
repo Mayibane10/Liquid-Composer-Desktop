@@ -151,7 +151,7 @@ export function IconCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const params = { layers: effectiveLayers, background, lightAngle, appearanceMode: mode, size: renderSize };
+    const params = { layers: effectiveLayers, background, lightAngle, appearanceMode: mode, size: renderSize, platform };
 
     const run = () => {
       renderingRef.current = true;

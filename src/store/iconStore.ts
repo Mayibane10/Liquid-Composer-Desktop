@@ -88,7 +88,7 @@ export function automaticGradient(hex: string): [string, string] {
 
 export function defaultBackground(): BackgroundConfig {
   const [top, bottom] = automaticGradient('#0088ff');
-  return { type: 'gradient', bgType: 'custom', stops: [{ offset: 0, color: top }, { offset: 1, color: bottom }], angle: 90 };
+  return { type: 'gradient', bgType: 'custom', stops: [{ offset: 0, color: top }, { offset: 1, color: bottom }], angle: 270 };
 }
 
 export const $iconName = atom<string>('Untitled');
