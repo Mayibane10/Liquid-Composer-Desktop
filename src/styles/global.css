@@ -367,6 +367,13 @@ details[open] > .glass-group-summary svg { transform: rotate(0); }
 .segment-divider { align-self: stretch; width: 1px; margin: 7px 2px; background: rgba(255, 255, 255, 0.14); }
 .appearance-segments button:hover { color: #fff; }
 .appearance-segments button[aria-pressed='true'] { background: #57575e; color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+.tint-controls { display: inline-flex; align-items: center; gap: 8px; padding: 0 10px; color: #d1d1d6; font-size: 10px; }
+.tint-controls label { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; text-transform: uppercase; letter-spacing: .04em; color: #8e8e93; font-size: 9px; font-weight: 600; }
+.tint-controls input[type='range'] { width: 74px; height: 12px; accent-color: #a78bfa; border-radius: 6px; }
+.tint-controls .tint-slider-hue { background: linear-gradient(90deg, #ff3015, #ffd60a, #30d158, #64d2ff, #0a84ff, #bf5af2, #ff2d55, #ff3015); }
+.tint-controls .tint-slider-saturation { background: linear-gradient(90deg, #777, #a78bfa); }
+.tint-controls .tint-slider-lightness { background: linear-gradient(90deg, #111, #a78bfa, #fff); }
+.tint-swatch { width: 15px; height: 15px; flex: 0 0 auto; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
 @media (max-width: 1100px) {
   .layer-sidebar { width: 224px; }
   .inspector-panel { width: 260px; }

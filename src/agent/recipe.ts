@@ -4,7 +4,7 @@ import type { AppearanceMode, BlendMode, LayerLayout, LiquidGlassConfig } from '
 
 export const API_VERSION = 1;
 export const MAX_LAYERS = 64;
-export const APPEARANCES = ['default', 'dark', 'clear', 'clearDark'] as const satisfies readonly AppearanceMode[];
+export const APPEARANCES = ['default', 'dark', 'clear', 'clearDark', 'tintedLight', 'tintedDark'] as const satisfies readonly AppearanceMode[];
 export const BLEND_MODES = [
   'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'hard-light',
   'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity', 'plus-lighter',
@@ -18,7 +18,7 @@ export const GUIDE = `A recipe is a JSON document that fully describes one icon;
 - liquidGlass: specular false = Off, true = Automatic, or "inside" / "outside"; refraction.enabled, with Strength in effects.refraction (-100..100) and Height in effects.bevel (% of the icon size: 1.25 at Height 0 %, 25 at Height 100 %); blur and translucency { enabled, value 0..100 }; translucencyGradient { enabled, angle 0..360, start/end 0..100, startOpacity/endOpacity 0..100 } enables directional artwork opacity; shadow { enabled, value 0..200 } is a soft black halo cast below the edges of the artwork and shows through translucent glass; aberration is Dispersion. Other effects keys are the Advanced panel.
 - fill recolors the artwork: none, solid { color } or gradient { stops } (top to bottom, #rrggbb).
 - background is { hue 0..360, tint 0..100, brightness 0..100 } or { colors: [top, bottom] }.
-- appearance is default, dark, clear or clearDark. clear and clearDark are Icon Composer's exported Clear Light and Clear Dark: a flat gray plate that each layer lightens by the luminance of its artwork. Light always comes from above.`;
+- appearance is default, dark, clear, clearDark, tintedLight or tintedDark. clear and clearDark are Icon Composer's exported Clear Light and Clear Dark: a flat gray plate that each layer lightens by the luminance of its artwork. Light always comes from above.`;
 
 // ── Schema ──
 

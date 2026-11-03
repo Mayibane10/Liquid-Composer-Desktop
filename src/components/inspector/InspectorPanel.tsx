@@ -101,8 +101,9 @@ export function InspectorPanel() {
                     </div>
                     {appearanceMode !== "default" && (
                         <p className="px-3 pb-3 glass-setting-caption">
-                            Colors apply to Default appearance. Dark and Clear
-                            use automatic backgrounds.
+                            Colors apply to Default appearance. Dark, Mono,
+                            Clear, and Tinted modes use appearance-specific
+                            backgrounds and treatments.
                         </p>
                     )}
                     <BackgroundControls />

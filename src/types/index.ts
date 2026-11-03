@@ -4,7 +4,10 @@ export type BlendMode =
   | 'difference' | 'exclusion' | 'hue' | 'saturation' | 'color'
   | 'luminosity' | 'plus-lighter';
 
-export type AppearanceMode = 'default' | 'dark' | 'clear' | 'clearDark';
+export type AppearanceMode =
+  | 'default' | 'dark'
+  | 'clear' | 'clearDark'
+  | 'tintedLight' | 'tintedDark';
 
 export interface ColorStop {
   offset: number;
@@ -142,4 +145,5 @@ export interface RenderContext {
   appearanceMode: AppearanceMode;
   size: number;
   platform?: IconPlatform;
+  appearanceTint?: string;
 }

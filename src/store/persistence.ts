@@ -1,13 +1,13 @@
 import { atom, batch, effect } from 'nanostores';
 import { $layers, $background, $iconName, bgColorsFromHueTint } from './iconStore';
-import { $appearanceMode, $zoom, setAppearanceMode, setZoom, $persistenceEnabled, $iconPlatform, setIconPlatform } from './uiStore';
+import { $appearanceMode, $zoom, setAppearanceMode, setZoom, $persistenceEnabled, $iconPlatform, setIconPlatform, $tintHue, $tintSaturation, $tintLightness } from './uiStore';
 import type { Layer, LayerEffects, BackgroundConfig, AppearanceMode, IconPlatform } from '../types/index';
 
 const STORAGE_KEY = 'liquid-composer-state';
 const ASSET_DB_NAME = 'liquid-composer-assets';
 const ASSET_STORE_NAME = 'images';
 const CURRENT_VERSION = 1;
-const APPEARANCE_MODES: AppearanceMode[] = ['default', 'dark', 'clear', 'clearDark'];
+const APPEARANCE_MODES: AppearanceMode[] = ['default', 'dark', 'clear', 'clearDark', 'tintedLight', 'tintedDark'];
 
 export const $hasUnsavedChanges = atom<boolean>(false);
 
@@ -21,6 +21,9 @@ interface StoredAppData {
       appearanceMode: AppearanceMode;
       zoom: number;
       platform?: IconPlatform;
+      tintHue?: number;
+      tintSaturation?: number;
+      tintLightness?: number;
     }
   }
 }
@@ -76,6 +79,9 @@ async function saveState() {
         appearanceMode: $appearanceMode.get(),
         zoom: $zoom.get(),
         platform: $iconPlatform.get(),
+        tintHue: $tintHue.get(),
+        tintSaturation: $tintSaturation.get(),
+        tintLightness: $tintLightness.get(),
       }
     }
   };
@@ -137,6 +143,9 @@ export async function initPersistence() {
             if (data.ui.zoom !== undefined) setZoom(data.ui.zoom);
             if (data.ui.platform === 'watchos') setIconPlatform('watchos');
             else if (data.ui.platform === 'ios' || data.ui.platform === 'iphone' || data.ui.platform === 'ipad' || data.ui.platform === 'macos') setIconPlatform('ios');
+            if (typeof data.ui.tintHue === 'number') $tintHue.set(Math.max(0, Math.min(360, data.ui.tintHue)));
+            if (typeof data.ui.tintSaturation === 'number') $tintSaturation.set(Math.max(0, Math.min(100, data.ui.tintSaturation)));
+            if (typeof data.ui.tintLightness === 'number') $tintLightness.set(Math.max(0, Math.min(100, data.ui.tintLightness)));
           }
         });
       }
@@ -190,7 +199,7 @@ export async function initPersistence() {
   });
 
   let initialRun = true;
-  effect([$layers, $background, $iconName, $appearanceMode, $zoom, $iconPlatform, $persistenceEnabled], () => {
+  effect([$layers, $background, $iconName, $appearanceMode, $zoom, $iconPlatform, $tintHue, $tintSaturation, $tintLightness, $persistenceEnabled], () => {
     if (initialRun) { initialRun = false; return; }
     debouncedSave();
   });

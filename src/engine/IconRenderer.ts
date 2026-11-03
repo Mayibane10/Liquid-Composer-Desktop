@@ -1017,6 +1017,18 @@ function composeClear(
     c.globalCompositeOperation = "source-over";
 }
 
+function applyTintAppearance(c: CanvasRenderingContext2D, size: number, dark: boolean, tint: string): void {
+    c.save();
+    c.globalCompositeOperation = 'color';
+    c.fillStyle = tint;
+    // Full-strength color blending replaces the artwork hue/saturation while
+    // preserving its luminance, which is how Apple's tinted appearance keeps
+    // the original glass depth without leaving blue artwork behind.
+    c.globalAlpha = 1;
+    c.fillRect(0, 0, size, size);
+    c.restore();
+}
+
 async function renderLayerToCanvas(
     layer: Layer,
     size: number,
@@ -1159,7 +1171,7 @@ async function renderLayerToCanvas(
     const fx = { ...DEFAULT_EFFECTS, ...liquidGlass.effects };
     const strength = fx.refraction / 100;
     const params: LiquidGlassParams = {
-        darkMode: mode === "dark",
+        darkMode: mode === "dark" || mode === "tintedDark",
         blurRadiusPx: liquidGlass.blur.enabled
             ? Math.min(liquidGlass.blur.value / 100, 1) * MATERIAL.blurMax * u
             : 0,
@@ -1267,6 +1279,7 @@ async function renderIconToCanvasImpl(
     const { layers, background, lightAngle, appearanceMode, size } = ctx;
     const isClear =
         appearanceMode === "clear" || appearanceMode === "clearDark";
+    const isDarkAppearance = appearanceMode === "dark" || appearanceMode === "tintedDark";
 
     const renderer = getWebGLRenderer(size);
     if (renderer) setWebgl2Status("active");
@@ -1291,13 +1304,13 @@ async function renderIconToCanvasImpl(
     };
     const clearMaskBg: BackgroundConfig = { type: "solid", color: "#00ff00" };
     const bgEntry = getCachedBgCanvas(
-        isClear ? clearMaskBg : appearanceMode === "dark" ? darkBg : background,
+        isClear ? clearMaskBg : isDarkAppearance ? darkBg : background,
         size,
     );
     const { canvas: glassBgCanvas, key: glassBgKey } = bgEntry;
     const iconBright = backgroundLuma(bgEntry) >= CHICLET_LUMINANCE.minBright;
     const lightBg =
-        appearanceMode === "dark" ? getCachedBgCanvas(background, size) : null;
+        isDarkAppearance ? getCachedBgCanvas(background, size) : null;
     const lightBgAvg = lightBg && averageColor(lightBg.canvas);
     const adaptBg =
         lightBgAvg && hslLightness(lightBgAvg) >= DARK_ADAPT_BG_MIN
@@ -1485,7 +1498,7 @@ async function renderIconToCanvasImpl(
             : getChicletHighlights(
                   watchHighlights
                       ? CHICLET_WATCH_HIGHLIGHTS
-                      : appearanceMode === "dark"
+                      : appearanceMode === "dark" || appearanceMode === "tintedDark"
                         ? CHICLET_DARK_HIGHLIGHTS
                         : CHICLET_HIGHLIGHTS,
                   "#ffffff",
@@ -1510,6 +1523,9 @@ async function renderIconToCanvasImpl(
                 ? MITIGATED.clearLight
                 : MITIGATED.clearDark,
         );
+
+    if (appearanceMode === "tintedLight") applyTintAppearance(c, size, false, ctx.appearanceTint ?? "#9b8bb3");
+    if (appearanceMode === "tintedDark") applyTintAppearance(c, size, true, ctx.appearanceTint ?? "#806099");
 
     // ── Squircle mask, after the highlights so the subtractive pass sees opaque pixels ──
     if (!bare) {
@@ -1673,6 +1689,7 @@ export interface ExportOptions {
     bare?: boolean;
     platforms?: boolean;
     platform?: IconPlatform;
+    appearanceTint?: string;
 }
 
 const EXPORT_QUALITY = 0.95;
@@ -1701,6 +1718,7 @@ async function renderForExport(
     renderSize: number,
     bare = false,
     platform?: IconPlatform,
+    appearanceTint?: string,
 ): Promise<HTMLCanvasElement> {
     const rendered = document.createElement("canvas");
     await renderIconToCanvas(
@@ -1712,6 +1730,7 @@ async function renderForExport(
             appearanceMode: mode,
             size: renderSize,
             platform,
+            appearanceTint,
         },
         bare,
     );
@@ -1757,7 +1776,7 @@ export async function exportIcon(
     background: RenderContext["background"],
     lightAngle: number,
     mode: AppearanceMode,
-    { format, size, bare, platform }: ExportOptions = { format: "png", size: 1024 },
+    { format, size, bare, platform, appearanceTint }: ExportOptions = { format: "png", size: 1024 },
 ): Promise<Blob> {
     const renderSize = Math.max(size, Math.min(2048, Math.max(1024, size * 2)));
     try {
@@ -1769,6 +1788,7 @@ export async function exportIcon(
             renderSize,
             bare,
             platform,
+            appearanceTint,
         );
         return await canvasToBlob(downscale(rendered, size), format, platform);
     } finally {
@@ -1781,6 +1801,8 @@ const RENDITION_NAMES: Record<AppearanceMode, string> = {
     dark: "Dark",
     clear: "ClearLight",
     clearDark: "ClearDark",
+    tintedLight: "TintedLight",
+    tintedDark: "TintedDark",
 };
 const ZIP_SIZES = [4096, 2048, 1024, 512, 256];
 
@@ -1789,6 +1811,7 @@ export async function exportZip(
     background: RenderContext["background"],
     lightAngle: number,
     platform?: IconPlatform,
+    appearanceTint?: string,
 ): Promise<Blob> {
     const files: Record<string, Uint8Array> = {};
     try {
@@ -1805,6 +1828,7 @@ export async function exportZip(
                     renderSize,
                     false,
                     platform,
+                    appearanceTint,
                 );
                 for (const size of ZIP_SIZES.filter(
                     s => s > 2048 === renderSize > 2048,

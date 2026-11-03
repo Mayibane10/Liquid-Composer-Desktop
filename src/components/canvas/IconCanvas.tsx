@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useStore } from '@nanostores/react';
 import { $layers, $background, updateLayer, setHistoryGesture } from '../../store/iconStore';
-import { $appearanceMode, $lightAngle, $zoom, $selectedLayerId, $hoveredLayerId, $webgl2Status, $webgl2Error, $webgl2Restores, $showGrid, $gridStyle, $iconPlatform, selectLayer, stepZoom } from '../../store/uiStore';
+import { $appearanceMode, $lightAngle, $zoom, $selectedLayerId, $hoveredLayerId, $webgl2Status, $webgl2Error, $webgl2Restores, $showGrid, $gridStyle, $iconPlatform, $tintHue, $tintSaturation, $tintLightness, selectLayer, stepZoom } from '../../store/uiStore';
 import { renderIconToCanvas, exportIcon, exportZip, exportPlatformZip, type ExportOptions } from '../../engine/IconRenderer';
 import { $fileDropZone } from '../useFileDrop';
 import { BottomBar } from '../layout/BottomBar';
@@ -121,6 +121,10 @@ export function IconCanvas() {
   const showGrid = useStore($showGrid);
   const gridStyle = useStore($gridStyle);
   const platform = useStore($iconPlatform);
+  const tintHue = useStore($tintHue);
+  const tintSaturation = useStore($tintSaturation);
+  const tintLightness = useStore($tintLightness);
+  const tintColor = `hsl(${tintHue} ${tintSaturation}% ${tintLightness}%)`;
   const effectiveLayers = layersForPlatform(layers, platform);
   const profile = platformProfile(platform);
   const previewRadius = profile.previewClass === 'watchos' ? '50%' : profile.previewClass === 'macos' ? '22%' : '26%';
@@ -151,7 +155,7 @@ export function IconCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const params = { layers: effectiveLayers, background, lightAngle, appearanceMode: mode, size: renderSize, platform };
+    const params = { layers: effectiveLayers, background, lightAngle, appearanceMode: mode, size: renderSize, platform, appearanceTint: tintColor };
 
     const run = () => {
       renderingRef.current = true;
@@ -171,7 +175,7 @@ export function IconCanvas() {
       pendingRef.current = null;
       run();
     }
-  }, [effectiveLayers, background, lightAngle, mode, renderSize, webgl2Restores]);
+  }, [effectiveLayers, background, lightAngle, mode, renderSize, platform, tintColor, webgl2Restores]);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -187,15 +191,15 @@ export function IconCanvas() {
     const handler = async (e: Event) => {
       const options = (e as CustomEvent<ExportOptions | null>).detail ?? { format: 'png', size: 1024 };
       if (options.clipboard) {
-        const png = await exportIcon(effectiveLayers, background, lightAngle, mode, { ...options, platform, format: 'png' });
+        const png = await exportIcon(effectiveLayers, background, lightAngle, mode, { ...options, platform, appearanceTint: tintColor, format: 'png' });
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]).catch(console.error);
         return;
       }
       const blob = await (options.platforms
         ? exportPlatformZip(layers, background, lightAngle)
         : options.allModes
-          ? exportZip(effectiveLayers, background, lightAngle, platform)
-          : exportIcon(effectiveLayers, background, lightAngle, mode, { ...options, platform })
+          ? exportZip(effectiveLayers, background, lightAngle, platform, tintColor)
+          : exportIcon(effectiveLayers, background, lightAngle, mode, { ...options, platform, appearanceTint: tintColor })
       ).catch((err: unknown) => { console.error(err); return null; });
       if (!blob) return;
       const ext = options.platforms || options.allModes ? 'zip' : options.format === 'jpeg' ? 'jpg' : 'png';
@@ -208,7 +212,7 @@ export function IconCanvas() {
     };
     window.addEventListener('icon-export', handler);
     return () => window.removeEventListener('icon-export', handler);
-  }, [layers, effectiveLayers, background, lightAngle, mode]);
+  }, [layers, effectiveLayers, background, lightAngle, mode, platform, tintColor]);
 
   const hitTestLayer = useCallback(async (layer: { blobUrl?: string; layout: { x: number; y: number; scale: number } }, nx: number, ny: number): Promise<boolean> => {
     if (!layer.blobUrl) return false;

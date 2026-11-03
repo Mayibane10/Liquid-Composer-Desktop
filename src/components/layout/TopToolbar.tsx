@@ -52,7 +52,11 @@ const EXPORT_OPTIONS: ExportOptions[] = [
     { format: "png", size: 512 },
     { format: "png", size: 256 },
     { format: "jpeg", size: 1024 },
+    { format: "png", size: 4096, bare: true },
+    { format: "png", size: 2048, bare: true },
     { format: "png", size: 1024, bare: true },
+    { format: "png", size: 512, bare: true },
+    { format: "png", size: 256, bare: true },
     { format: "png", size: 1024, allModes: true },
 ];
 const FORMAT_LABEL: Record<ExportOptions["format"], string> = {
@@ -64,7 +68,7 @@ type ToolbarPopover = "background" | "light" | "zoom" | "platform" | "export";
 function exportLabel(opt: ExportOptions): string {
     if (opt.clipboard) return "Copy PNG";
     if (opt.allModes) return "All Appearances";
-    if (opt.bare) return "PNG · No Chiclet";
+    if (opt.bare) return "PNG · No Background";
     return `${FORMAT_LABEL[opt.format]}${opt.size === 4096 ? " · 4K" : opt.size === 2048 ? " · 2K" : ""}`;
 }
 
@@ -566,14 +570,14 @@ export function TopToolbar() {
                                             ? "clipboard"
                                             : opt.allModes
                                               ? "zip"
-                                              : opt.bare
-                                                ? "bare"
+                                                : opt.bare
+                                                  ? `bare-${opt.size}`
                                                 : `${opt.format}-${opt.size}`
                                     }
                                     role="menuitem"
                                     tabIndex={-1}
                                     onClick={() => exportAs(opt)}
-                                    className={`editor-menu-item ${opt.allModes || opt.size === 4096 ? "editor-menu-separated" : ""}`}>
+                                    className={`editor-menu-item ${opt.allModes || opt.size === 4096 || (opt.bare && opt.size === 4096) ? "editor-menu-separated" : ""}`}>
                                     <span>{exportLabel(opt)}</span>
                                     <span className="editor-menu-detail">
                                         {opt.allModes

@@ -17,7 +17,7 @@ Liquid Composer is a web app recreation of Apple's Icon Composer that reproduces
 
 Rendering runs on a WebGL2 pipeline. A distance field of each layer's silhouette drives refraction and edge lighting; when Blur is on, two separable Gaussian passes blur everything beneath the layer, and the glass composite shader works in gamma-encoded sRGB, like Icon Composer. Without WebGL2 the app falls back to Canvas 2D: layers keep their shadow, translucency and edge lighting, but lose refraction and blur.
 
-## What's new for iOS 27
+## What's new for iOS/watchOS 27
 
 - Light comes straight from above. The toolbar light-angle control remains as a preview tool and is not saved with the document
 - Highlights along the top and bottom edges, and dark edges that define the shape
@@ -33,7 +33,7 @@ Highlights, refraction, translucency, blur and shadows follow the formulas and v
 - Glass controls per layer, or applied to all layers at once: Specular placement, Refraction (Strength, Height), Blur, Translucency and Shadow
 - Advanced panel with Lens (Dispersion), Highlights (Light intensity, Top, Bottom, Edge definition) and Surface (Frostiness), with a reset
 - Per-layer opacity, blend mode, and solid or two-stop gradient fill
-- Default, Dark, Clear Light and Clear Dark appearances. The Tinted variants of iOS 27 are not implemented
+- Default, Dark, Clear Light and Clear Dark appearances and both the light and dark The Tinted variants of iOS 27/watchOS 27
 - Glass-on-glass compositing: each glass layer refracts the background and every layer painted beneath it
 - Background editor driven by hue, tint and brightness, or custom gradient stops
 - Apple icon grid overlay in light or dark lines, center snap guides, alpha-aware layer picking on canvas

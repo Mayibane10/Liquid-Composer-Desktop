@@ -31,6 +31,13 @@ export const $showAdvancedGlass = atom<boolean>(false);
 export const $showGrid = atom<boolean>(false);
 export const $gridStyle = atom<'light' | 'dark'>('light');
 export const $iconPlatform = atom<IconPlatform>('ios');
+export const $tintHue = atom<number>(280);
+export const $tintSaturation = atom<number>(25);
+export const $tintLightness = atom<number>(65);
+
+export function appearanceTintColor() {
+  return `hsl(${$tintHue.get()}, ${$tintSaturation.get()}%, ${$tintLightness.get()}%)`;
+}
 export type Webgl2Status = 'inactive' | 'active' | 'error';
 export const $webgl2Status = atom<Webgl2Status>('inactive');
 export const $webgl2Error = atom<string>('');
