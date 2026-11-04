@@ -1804,7 +1804,7 @@ const RENDITION_NAMES: Record<AppearanceMode, string> = {
     tintedLight: "TintedLight",
     tintedDark: "TintedDark",
 };
-const ZIP_SIZES = [4096, 2048, 1024, 512, 256];
+const ZIP_SIZES = [4096, 2048, 1024, 512, 256, 192];
 
 export async function exportZip(
     layers: RenderContext["layers"],

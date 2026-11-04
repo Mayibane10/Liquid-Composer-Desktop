@@ -51,12 +51,14 @@ const EXPORT_OPTIONS: ExportOptions[] = [
     { format: "png", size: 1024 },
     { format: "png", size: 512 },
     { format: "png", size: 256 },
+    { format: "png", size: 192 },
     { format: "jpeg", size: 1024 },
     { format: "png", size: 4096, bare: true },
     { format: "png", size: 2048, bare: true },
     { format: "png", size: 1024, bare: true },
     { format: "png", size: 512, bare: true },
     { format: "png", size: 256, bare: true },
+    { format: "png", size: 192, bare: true },
     { format: "png", size: 1024, allModes: true },
 ];
 const FORMAT_LABEL: Record<ExportOptions["format"], string> = {

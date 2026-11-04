@@ -1,4 +1,4 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/mcp", "destination": "/api/mcp" }]
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "rewrites": [{ "source": "/mcp", "destination": "/api/mcp" }]
 }
