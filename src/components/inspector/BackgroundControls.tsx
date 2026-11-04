@@ -6,6 +6,7 @@ import {
     useCallback,
 } from "react";
 import { useStore } from "@nanostores/react";
+import { Slider } from "../ui/Slider";
 import {
     $background,
     updateBackground,
@@ -555,47 +556,17 @@ export function BackgroundControls() {
                                         ×
                                     </button>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-white/40 w-12">
-                                        Position
-                                    </span>
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="100"
-                                        value={Math.round(stop.offset * 100)}
-                                        aria-label={`Gradient stop ${i + 1} position`}
-                                        onChange={e =>
-                                            handleStopOffset(
-                                                i,
-                                                Number(e.target.value) / 100,
-                                            )
-                                        }
-                                        className="flex-1 accent-[#0a84ff]"
-                                    />
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        step="1"
-                                        value={Math.round(stop.offset * 100)}
-                                        aria-label={`Gradient stop ${i + 1} position percentage`}
-                                        onChange={e => {
-                                            if (e.target.value === "") return;
-                                            handleStopOffset(
-                                                i,
-                                                Math.max(
-                                                    0,
-                                                    Math.min(
-                                                        100,
-                                                        Number(e.target.value),
-                                                    ),
-                                                ) / 100,
-                                            );
-                                        }}
-                                        className="w-14 text-right text-[10px] font-mono bg-[#1a1a1c] border border-white/10 rounded px-1.5 py-1 text-white"
-                                    />
-                                </div>
+                                <Slider
+                                    label="Position"
+                                    ariaLabel={`Gradient stop ${i + 1} position`}
+                                    min={0}
+                                    max={100}
+                                    step={1}
+                                    value={Math.round(stop.offset * 100)}
+                                    onChange={v => handleStopOffset(i, v / 100)}
+                                    unit="%"
+                                    layout="stacked"
+                                />
                             </div>
                         ))}
                     </div>
@@ -631,131 +602,44 @@ export function BackgroundControls() {
                         </div>
                     </div>
                     <div className="border-t border-white/[0.08] pt-3 space-y-2">
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <label
-                                    htmlFor="bg-gradient-angle"
-                                    className="text-xs text-white/65">
-                                    Gradient orientation
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="359"
-                                    value={gradientAngle}
-                                    aria-label="Gradient orientation in degrees"
-                                    onChange={e => {
-                                        if (e.target.value === "") return;
-                                        updateGradientAngle(
-                                            Math.max(
-                                                0,
-                                                Math.min(
-                                                    359,
-                                                    Number(e.target.value),
-                                                ),
-                                            ),
-                                        );
-                                    }}
-                                    className="w-16 text-right text-xs font-mono bg-[#1a1a1c] border border-white/10 rounded px-1.5 py-1 text-white"
-                                />
-                            </div>
-                            <input
-                                id="bg-gradient-angle"
-                                type="range"
-                                min="0"
-                                max="359"
-                                value={gradientAngle}
-                                onChange={e =>
-                                    updateGradientAngle(Number(e.target.value))
-                                }
-                                className="w-full accent-[#0a84ff]"
-                            />
-                        </div>
+                        <Slider
+                            label="Gradient orientation"
+                            ariaLabel="Gradient orientation"
+                            min={0}
+                            max={359}
+                            step={1}
+                            value={gradientAngle}
+                            onChange={updateGradientAngle}
+                            unit="°"
+                            layout="stacked"
+                        />
                         <span
                             className="text-[10px] font-semibold uppercase tracking-widest block"
                             style={{ color: "rgba(255,255,255,0.45)" }}>
                             Directional background light
                         </span>
-                        <div className="flex items-center justify-between">
-                            <label
-                                htmlFor="bg-light-angle"
-                                className="text-xs text-white/65">
-                                Direction
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                max="359"
-                                value={lightAngle}
-                                aria-label="Light direction in degrees"
-                                onChange={e => {
-                                    if (e.target.value === "") return;
-                                    updateLight(
-                                        Math.max(
-                                            0,
-                                            Math.min(
-                                                359,
-                                                Number(e.target.value),
-                                            ),
-                                        ),
-                                        lightIntensity,
-                                    );
-                                }}
-                                className="w-16 text-right text-xs font-mono bg-[#1a1a1c] border border-white/10 rounded px-1.5 py-1 text-white"
-                            />
-                        </div>
-                        <input
-                            id="bg-light-angle"
-                            type="range"
-                            min="0"
-                            max="359"
+                        <Slider
+                            label="Direction"
+                            ariaLabel="Light direction"
+                            min={0}
+                            max={359}
+                            step={1}
                             value={lightAngle}
-                            onChange={e =>
-                                updateLight(
-                                    Number(e.target.value),
-                                    lightIntensity,
-                                )
-                            }
-                            className="w-full accent-[#0a84ff]"
+                            onChange={v => updateLight(v, lightIntensity)}
+                            unit="°"
+                            layout="stacked"
                         />
-                        <div className="flex items-center justify-between">
-                            <label
-                                htmlFor="bg-light-intensity"
-                                className="text-xs text-white/65">
-                                Intensity
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={lightIntensity}
-                                aria-label="Light intensity percentage"
-                                onChange={e => {
-                                    if (e.target.value === "") return;
-                                    updateLight(
-                                        lightAngle,
-                                        Math.max(
-                                            0,
-                                            Math.min(
-                                                100,
-                                                Number(e.target.value),
-                                            ),
-                                        ),
-                                    );
-                                }}
-                                className="w-16 text-right text-xs font-mono bg-[#1a1a1c] border border-white/10 rounded px-1.5 py-1 text-white"
-                            />
-                        </div>
-                        <input
-                            id="bg-light-intensity"
-                            type="range"
-                            min="0"
-                            max="100"
+
+                        <Slider
+                            label="Intensity"
+                            ariaLabel="Light intensity"
+                            min={0}
+                            max={100}
+                            step={1}
                             value={lightIntensity}
-                            onChange={e =>
-                                updateLight(lightAngle, Number(e.target.value))
-                            }
-                            className="w-full accent-[#0a84ff]"
+                            onChange={v => updateLight(lightAngle, v)}
+                            unit="%"
+                            layout="stacked"
                         />
                     </div>
                 </div>
