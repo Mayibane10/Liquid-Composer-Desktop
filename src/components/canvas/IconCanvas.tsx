@@ -1,7 +1,7 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useCallback, useState } from 'react';
 import { useStore } from '@nanostores/react';
 import { $layers, $background, updateLayer, setHistoryGesture } from '../../store/iconStore';
-import { $appearanceMode, $lightAngle, $zoom, $selectedLayerId, $hoveredLayerId, $webgl2Status, $webgl2Error, $webgl2Restores, $showGrid, $gridStyle, $iconPlatform, $tintHue, $tintSaturation, $tintLightness, selectLayer, stepZoom } from '../../store/uiStore';
+import { $appearanceMode, $lightAngle, $zoom, $selectedLayerId, $hoveredLayerId, $webgl2Status, $webgl2Error, $webgl2Restores, $showGrid, $gridStyle, $iconPlatform, $tintHue, $tintSaturation, $tintLightness, $mobilePane, MOBILE_QUERY, selectLayer, stepZoom } from '../../store/uiStore';
 import { renderIconToCanvas, exportIcon, exportZip, exportPlatformZip, type ExportOptions } from '../../engine/IconRenderer';
 import { $fileDropZone } from '../useFileDrop';
 import { BottomBar } from '../layout/BottomBar';
@@ -125,6 +125,8 @@ export function IconCanvas() {
   const tintSaturation = useStore($tintSaturation);
   const tintLightness = useStore($tintLightness);
   const tintColor = `hsl(${tintHue} ${tintSaturation}% ${tintLightness}%)`;
+  const pane = useStore($mobilePane);
+  const [fitSize, setFitSize] = useState<number | null>(null);
   const effectiveLayers = layersForPlatform(layers, platform);
   const profile = platformProfile(platform);
   const previewRadius = profile.previewClass === 'watchos' ? '50%' : profile.previewClass === 'macos' ? '22%' : '26%';
@@ -143,17 +145,33 @@ export function IconCanvas() {
     moved?: boolean;
   } | null>(null);
 
-  const iconSize = Math.round(ICON_BASE_SIZE * (zoom / 100));
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const iconSize = fitSize ?? Math.round(ICON_BASE_SIZE * (zoom / 100));
   const dpr = typeof window !== 'undefined' ? Math.max(2, Math.min(window.devicePixelRatio || 1, 3)) : 2;
-  const renderSize = Math.max(1024, Math.min(2048, Math.round(ICON_BASE_SIZE * dpr)));
+  const renderSize = Math.max(1024, Math.min(2048, Math.round((fitSize ?? ICON_BASE_SIZE) * dpr)));
 
   const outlineImgRef = useRef<HTMLImageElement>(null);
   const renderingRef  = useRef(false);
   const pendingRef    = useRef<(() => void) | null>(null);
 
+  useLayoutEffect(() => {
+    const el = workspaceRef.current;
+    if (!el) return;
+    const mobile = window.matchMedia(MOBILE_QUERY);
+    const measure = () => {
+      if (!mobile.matches) setFitSize(null);
+      else if (el.clientWidth && el.clientHeight) setFitSize(Math.max(1, Math.min(el.clientWidth - 24, el.clientHeight - 112)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    mobile.addEventListener?.('change', measure);
+    return () => { observer.disconnect(); mobile.removeEventListener?.('change', measure); };
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || (window.matchMedia(MOBILE_QUERY).matches && (fitSize === null || pane !== 'canvas'))) return;
 
     const params = { layers: effectiveLayers, background, lightAngle, appearanceMode: mode, size: renderSize, platform, appearanceTint: tintColor };
 
@@ -175,7 +193,7 @@ export function IconCanvas() {
       pendingRef.current = null;
       run();
     }
-  }, [effectiveLayers, background, lightAngle, mode, renderSize, platform, tintColor, webgl2Restores]);
+  }, [effectiveLayers, background, lightAngle, mode, renderSize, platform, tintColor, webgl2Restores, fitSize, pane]);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -370,6 +388,7 @@ export function IconCanvas() {
 
   return (
     <div
+      ref={workspaceRef}
       className="icon-workspace flex-1 min-w-0 flex items-center justify-center relative overflow-hidden"
       data-file-drop="canvas"
       onPointerDown={(e) => {

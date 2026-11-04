@@ -7,6 +7,9 @@ import './styles/global.css';
 
 const agentMode = new URLSearchParams(location.search).has('agent');
 if (agentMode) $persistenceEnabled.set(false);
+else if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(console.error), { once: true });
+}
 const restored = agentMode ? Promise.resolve() : initPersistence();
 
 createRoot(document.getElementById('root')!).render(

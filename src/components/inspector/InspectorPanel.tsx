@@ -118,14 +118,14 @@ export function InspectorPanel() {
                 <div key={layer.id} className="flex-1 min-h-0 overflow-y-auto">
                     {layer.type === "group" ? (
                         <>
-                            <GroupColorSection />
                             <CompositionSection />
+                            <GroupColorSection />
                         </>
                     ) : (
                         <>
+                            <CompositionSection />
                             <ColorSection />
                             <LiquidGlassSection />
-                            <CompositionSection />
                         </>
                     )}
                 </div>

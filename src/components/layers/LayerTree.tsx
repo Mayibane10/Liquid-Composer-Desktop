@@ -18,7 +18,7 @@ import {
   undo,
   redo,
 } from '../../store/iconStore';
-import { $persistenceEnabled, $selectedLayerId, $showGrid, selectLayer, CANVAS_SELECTION_ID } from '../../store/uiStore';
+import { $persistenceEnabled, $selectedLayerId, $showGrid, selectLayer, inspectLayer, CANVAS_SELECTION_ID } from '../../store/uiStore';
 import { clearPersistence } from '../../store/persistence';
 import { $fileDropZone, addImageFiles, imageFiles } from '../useFileDrop';
 import { LayerItem } from './LayerItem';
@@ -315,7 +315,7 @@ export function LayerTree() {
         type="button"
         draggable={false}
         aria-pressed={selectedId === CANVAS_SELECTION_ID}
-        onClick={() => selectLayer(CANVAS_SELECTION_ID)}
+        onClick={() => inspectLayer(CANVAS_SELECTION_ID)}
         className="layer-canvas-button"
       >
         <Square size={18} aria-hidden="true" />

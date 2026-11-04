@@ -261,6 +261,42 @@ details[open] > .glass-group-summary svg {
     }
 }
 
+/* ── Mobile panel navigation ── */
+[data-icon-area] { touch-action: none; }
+.editor-tabbar { display: none; }
+@media (max-width: 767px) {
+  html { touch-action: manipulation; overscroll-behavior: none; }
+  .editor-toolbar { flex-wrap: nowrap; padding: 8px 12px; }
+  .editor-toolbar-tools { order: 0; flex: none; }
+  .editor-tool-group, .editor-tool-label { display: none; }
+  .editor-tool-button, .editor-export button { min-height: 40px; }
+  .editor-background { position: static; }
+  .editor-background-popover { left: 8px; right: 8px; width: auto; }
+  .editor-toolbar .editor-popover { max-height: calc(100dvh - 72px); overflow-y: auto; }
+  .editor-menu-item { min-height: 40px; }
+  .editor-panel-header { font-size: 16px; }
+  .editor-workspace:not([data-mobile-pane='canvas']) > .icon-workspace,
+  .editor-workspace:not([data-mobile-pane='layers']) > .layer-sidebar,
+  .editor-workspace:not([data-mobile-pane='inspector']) > .inspector-panel { display: none; }
+  .canvas-grid-toggle { display: none; }
+  .appearance-segments button { min-height: 40px; }
+  .layer-sidebar { flex: 1; width: auto; margin: 0; border: 0; border-radius: 0; box-shadow: none; background: #202023; backdrop-filter: none; }
+  .editor-icon-button { width: 40px; height: 40px; }
+  .layer-import button { min-height: 40px; }
+  .layer-row { min-height: 44px; }
+  .layer-action { width: 40px; height: 40px; opacity: 0.8; }
+  .layer-canvas-button { min-height: 44px; }
+  .inspector-panel { flex: 1; width: auto; border-left: 0; --inspector-control-height: 40px; }
+  .glass-slider > .glass-slider-track { height: 40px; }
+  input[type='range']::-webkit-slider-thumb { width: 28px; height: 40px; }
+  input:is([type='text'], [type='number']), .inspector-panel input:is([type='text'], [type='number']) { font-size: 16px; }
+  .editor-tabbar { position: relative; display: flex; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); background: #202023; border-top: 1px solid rgba(255,255,255,.06); }
+  .editor-tabbar-indicator { position: absolute; top: 4px; height: 44px; padding: 0 14px; pointer-events: none; transition: left 420ms cubic-bezier(.3,1.25,.5,1), right 420ms cubic-bezier(.3,1.25,.5,1); }
+  .editor-tabbar-indicator::before { content: ''; display: block; height: 100%; border-radius: 14px; background: rgba(255,255,255,.09); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 1px 2px rgba(0,0,0,.25); }
+  .editor-tabbar button { position: relative; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px; color: #8e8e93; font-size: 10px; font-weight: 500; }
+  .editor-tabbar button[aria-pressed='true'] { color: #64a8ff; }
+}
+
 .inspector-panel {
     --inspector-control-height: 30px;
     --text-xs: 12px;

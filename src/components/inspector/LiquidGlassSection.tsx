@@ -16,6 +16,7 @@ import type { LayerEffects } from "../../types/index";
 import { Toggle } from "../ui/Toggle";
 import { Slider } from "../ui/Slider";
 import { Select } from "../ui/Select";
+import { RefractionPad } from './RefractionPad';
 
 type Adjustment = { enabled: boolean; value: number };
 
@@ -227,28 +228,15 @@ export function LiquidGlassSection() {
                                 />
                             </div>
                             {refractionOn && (
-                                <>
-                                    <Slider
-                                        layout="stacked"
-                                        label="Strength"
-                                        value={fx.refraction}
-                                        onChange={v =>
-                                            setEffect("refraction", v)
-                                        }
-                                        min={-100}
-                                        max={100}
-                                    />
-                                    <Slider
-                                        layout="stacked"
-                                        label="Height"
-                                        value={toHeight(fx.bevel)}
-                                        onChange={v =>
-                                            setEffect("bevel", toBevel(v))
-                                        }
-                                        min={0}
-                                        max={100}
-                                    />
-                                </>
+                                <RefractionPad
+                                    strength={fx.refraction}
+                                    height={toHeight(fx.bevel)}
+                                    dimmed={!lg.enabled}
+                                    onChange={change => {
+                                        if (change.strength !== undefined) setEffect("refraction", change.strength);
+                                        if (change.height !== undefined) setEffect("bevel", toBevel(change.height));
+                                    }}
+                                />
                             )}
                         </div>
                         <AdjustmentRow

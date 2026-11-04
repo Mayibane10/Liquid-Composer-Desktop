@@ -31,6 +31,9 @@ export const $showAdvancedGlass = atom<boolean>(false);
 export const $showGrid = atom<boolean>(false);
 export const $gridStyle = atom<'light' | 'dark'>('light');
 export const $iconPlatform = atom<IconPlatform>('ios');
+export const MOBILE_QUERY = '(max-width: 767px)';
+export type MobilePane = 'canvas' | 'layers' | 'inspector';
+export const $mobilePane = atom<MobilePane>('canvas');
 export const $tintHue = atom<number>(280);
 export const $tintSaturation = atom<number>(25);
 export const $tintLightness = atom<number>(65);
@@ -45,6 +48,16 @@ export const $webgl2Restores = atom<number>(0);
 
 export function selectLayer(id: string | null) {
   $selectedLayerId.set(id);
+}
+
+export function setMobilePane(pane: MobilePane) {
+  $hoveredLayerId.set(null);
+  $mobilePane.set(pane);
+}
+
+export function inspectLayer(id: string) {
+  selectLayer(id);
+  if (window.matchMedia(MOBILE_QUERY).matches) setMobilePane('inspector');
 }
 
 export function setAppearanceMode(mode: AppearanceMode) {
