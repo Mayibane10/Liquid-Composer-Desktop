@@ -1609,3 +1609,123 @@ details[open] > .glass-group-summary svg {
         color: #d1d1d6;
     }
 }
+
+.icon-workspace {
+    container-name: icon-workspace;
+    container-type: inline-size;
+}
+
+/* Compact canvas: appearance above, tint + Grid on the same row. */
+.canvas-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "appearance appearance"
+        "tint grid";
+    align-items: center;
+    justify-content: stretch;
+    gap: 8px 10px;
+}
+
+.canvas-controls > .appearance-controls {
+    display: contents;
+}
+
+.canvas-controls .appearance-segments[aria-label="Icon appearance"] {
+    grid-area: appearance;
+    justify-self: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+}
+
+.canvas-controls .tint-controls {
+    grid-area: tint;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 0 1 auto;
+    flex-wrap: nowrap;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
+    gap: clamp(6px, 1.4cqw, 12px);
+}
+
+.canvas-controls .tint-controls > .tint-gradient-slider {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+}
+
+.canvas-controls .tint-gradient-slider > div {
+    width: 100%;
+    min-width: 0;
+}
+
+.canvas-controls > .appearance-segments[aria-label="Icon grid"] {
+    grid-area: grid;
+    justify-self: end;
+}
+
+/* Medium canvas: give the tint panel a wide, centered row of its own. */
+@container icon-workspace (min-width: 760px) and (max-width: 959px) {
+    .canvas-controls {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "appearance"
+            "tint"
+            "grid";
+        justify-items: center;
+        gap: 8px;
+    }
+
+    .canvas-controls .tint-controls {
+        width: min(560px, 100%);
+    }
+
+    .canvas-controls > .appearance-segments[aria-label="Icon grid"] {
+        justify-self: center;
+    }
+}
+
+/* Wide canvas: keep all three controls in one centered horizontal group. */
+@container icon-workspace (min-width: 960px) {
+    .canvas-controls {
+        grid-template-columns: max-content 250px max-content;
+        grid-template-areas: "appearance tint grid";
+        justify-content: center;
+        justify-items: stretch;
+        gap: 10px;
+    }
+
+    .canvas-controls .tint-controls {
+        width: 250px;
+    }
+
+    .canvas-controls > .appearance-segments[aria-label="Icon grid"] {
+        justify-self: center;
+    }
+}
+/* When tint is off, keep Appearance and Grid together */
+.canvas-controls:not(:has(.tint-controls)) {
+    grid-template-columns: max-content max-content;
+    grid-template-areas: "appearance grid";
+    justify-content: center;
+    justify-items: center;
+    align-items: center;
+    gap: 8px 10px;
+}
+
+.canvas-controls:not(:has(.tint-controls))
+    .appearance-segments[aria-label="Icon appearance"] {
+    justify-self: center;
+}
+
+.canvas-controls:not(:has(.tint-controls))
+    > .appearance-segments[aria-label="Icon grid"] {
+    justify-self: center;
+}
