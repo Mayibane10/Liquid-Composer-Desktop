@@ -419,6 +419,35 @@ details[open] > .glass-group-summary svg {
         gap: 12px;
     }
 
+    .appearance-controls {
+        flex-wrap: wrap;
+    }
+
+    .tint-controls > .glass-slider {
+        display: grid;
+        grid-template-columns: 72px minmax(50px, 1fr) 52px;
+        flex: 1 1 100%;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .tint-controls > .glass-slider > label {
+        width: auto;
+    }
+
+    .tint-controls > .glass-slider > div:last-child {
+        gap: 4px;
+    }
+
+    .tint-controls > .glass-slider input[type="number"] {
+        width: 38px;
+        font-size: 13px;
+    }
+
+    .tint-controls .glass-slider-track {
+        min-width: 50px;
+    }
+
     .tint-controls label {
         flex: 0 0 auto;
     }
@@ -1256,6 +1285,23 @@ details[open] > .glass-group-summary svg {
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
 }
+.appearance-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: 100%;
+}
+.appearance-controls.has-tint-controls {
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    background: rgba(43, 43, 47, 0.88);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.12);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+}
 .appearance-segments button {
     display: flex;
     align-items: center;
@@ -1287,12 +1333,18 @@ details[open] > .glass-group-summary svg {
         inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 .tint-controls {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     flex-wrap: wrap;
     gap: 8px;
-    padding: 0 10px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: transparent;
+    min-width: 0;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     color: #d1d1d6;
     font-size: 10px;
     max-width: 100%;
@@ -1308,6 +1360,33 @@ details[open] > .glass-group-summary svg {
     color: #8e8e93;
     font-size: 9px;
     font-weight: 600;
+}
+.tint-controls > .glass-slider {
+    width: 172px;
+    gap: 6px;
+}
+.tint-controls .glass-slider-track > div:first-child {
+    height: 10px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.tint-controls .glass-slider-track > div:first-child > div {
+    height: 10px;
+}
+.tint-controls .glass-slider-track > div:nth-child(2) {
+    width: 14px;
+    height: 14px;
+    left: calc(var(--slider-pct, 0%) - 7px);
+}
+.tint-controls > .glass-slider > label {
+    width: 58px;
+    font-size: 9px;
+    color: #8e8e93;
+}
+.tint-controls > .glass-slider > div:last-child {
+    gap: 3px;
+}
+.tint-controls > .glass-slider input[type="number"] {
+    width: 34px;
 }
 .tint-controls input[type="range"] {
     width: 74px;
@@ -1359,6 +1438,14 @@ details[open] > .glass-group-summary svg {
     }
 }
 @media (max-width: 800px) {
+    .layer-sidebar,
+    .inspector-panel {
+        width: 210px;
+        flex: 0 0 210px;
+    }
+    .icon-workspace {
+        min-width: 0;
+    }
     .editor-toolbar {
         flex-wrap: wrap;
         gap: 8px;
@@ -1395,6 +1482,26 @@ details[open] > .glass-group-summary svg {
     /* Platform moves down when the row runs out of space */
     .editor-toolbar-tools > .relative:last-child {
         flex-shrink: 0;
+    }
+}
+@media (min-width: 768px) and (max-width: 900px) {
+    .layer-sidebar,
+    .inspector-panel {
+        width: 176px;
+        flex: 0 0 176px;
+    }
+    .canvas-controls {
+        left: 8px;
+        right: 8px;
+        bottom: 12px;
+        gap: 6px;
+    }
+    .tint-controls {
+        gap: 4px;
+        padding: 4px 6px;
+    }
+    .tint-controls > .glass-slider {
+        width: 145px;
     }
 }
 @media (prefers-reduced-motion: reduce) {

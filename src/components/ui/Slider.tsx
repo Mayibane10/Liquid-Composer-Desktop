@@ -11,6 +11,8 @@ interface SliderProps {
     disabled?: boolean;
     layout?: "inline" | "stacked";
     ariaLabel?: string;
+    /** Optional full-track gradient, useful for color controls. */
+    trackGradient?: string;
 }
 
 export function Slider({
@@ -24,6 +26,7 @@ export function Slider({
     disabled,
     layout = "inline",
     ariaLabel,
+    trackGradient,
 }: SliderProps) {
     const id = useId();
     const safeValue = isNaN(value) ? min : value;
@@ -72,7 +75,8 @@ export function Slider({
         [onChange],
     );
 
-    const pct = ((safeValue - min) / (max - min)) * 100;
+    const pct = max === min ? 0 : ((safeValue - min) / (max - min)) * 100;
+    const thumbOffset = 7;
 
     return (
         <div
@@ -85,16 +89,18 @@ export function Slider({
                 </label>
             )}
             <div className="glass-slider-track flex-1 relative h-4 flex items-center">
-                <div className="w-full h-1 rounded-full bg-white/[0.12]">
-                    <div
+                <div
+                    className="w-full h-1 rounded-full bg-white/[0.12]"
+                    style={trackGradient ? { background: trackGradient } : undefined}>
+                    {!trackGradient && <div
                         className="h-1 rounded-full bg-[#0a84ff]"
                         style={{ width: `${pct}%` }}
-                    />
+                    />}
                 </div>
                 <div
                     className="absolute top-1/2 -translate-y-1/2 w-[13px] h-[13px] rounded-full bg-white pointer-events-none"
                     style={{
-                        left: `calc(${pct}% - ${(pct / 100) * (layout === "stacked" ? 18 : 13)}px)`,
+                    left: `calc(${pct}% - ${thumbOffset}px)`,
                         boxShadow:
                             "0 1px 3px rgba(0,0,0,0.45), 0 0 0 0.5px rgba(0,0,0,0.12)",
                     }}
