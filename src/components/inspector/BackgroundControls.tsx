@@ -162,6 +162,9 @@ export function BackgroundControls() {
     const [lightAngle, setLightAngle] = useState(storeLightAngle);
     const [lightIntensity, setLightIntensity] = useState(storeLightIntensity);
     const [gradientAngle, setGradientAngle] = useState(storeGradientAngle);
+    const [stopPositions, setStopPositions] = useState(
+        localStops.map(stop => Math.round(stop.offset * 100)),
+    );
 
     const hue = localHue;
     const tint = localTint;
@@ -323,14 +326,27 @@ export function BackgroundControls() {
         );
     };
 
-    const handleStopOffset = (index: number, offset: number) => {
-        commitStops(
-            localStops.map((s, i) =>
-                i === index
-                    ? { ...s, offset: Math.max(0, Math.min(1, offset)) }
-                    : s,
-            ),
+    const handleStopOffset = (index: number, value: number) => {
+        const position = Math.max(0, Math.min(100, value));
+
+        setStopPositions(prev =>
+            prev.map((current, i) => (i === index ? position : current)),
         );
+
+        const nextStops = localStops.map((stop, i) =>
+            i === index ? { ...stop, offset: position / 100 } : stop,
+        );
+
+        setLocalStops(nextStops);
+
+        bgValuesRef.current = {
+            ...bgValuesRef.current,
+            type: "custom",
+            stops: nextStops,
+        };
+
+        setLocalBgType("custom");
+        scheduleUpdate();
     };
 
     const addGradientStop = () => {
@@ -527,7 +543,7 @@ export function BackgroundControls() {
                     <div className="space-y-3">
                         {localStops.map((stop, i) => (
                             <div
-                                key={`${i}-${stop.offset}`}
+                                key={i}
                                 className="rounded-lg border border-white/[0.07] p-2 space-y-2">
                                 <div className="flex items-center gap-2">
                                     <ColorPicker
@@ -562,8 +578,10 @@ export function BackgroundControls() {
                                     min={0}
                                     max={100}
                                     step={1}
-                                    value={Math.round(stop.offset * 100)}
-                                    onChange={v => handleStopOffset(i, v / 100)}
+                                    value={stopPositions[i]}
+                                    onChange={value =>
+                                        handleStopOffset(i, value)
+                                    }
                                     unit="%"
                                     layout="stacked"
                                 />
