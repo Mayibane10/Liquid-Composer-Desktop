@@ -27,7 +27,7 @@ function GradientSlider({
     onChange: (value: number) => void;
     onRelease: () => void;
 }) {
-    const pct = max === min ? 0 : ((value - min) / (max - min)) * 100;
+    const pct = ((value - min) / (max - min)) * 100;
     return (
         <div className="tint-gradient-slider">
             <label
@@ -46,7 +46,8 @@ function GradientSlider({
                 <div
                     className="absolute top-1/2 -translate-y-1/2 w-[14px] h-[14px] rounded-full pointer-events-none"
                     style={{
-                        left: `calc(${pct}% - 7px)`,
+                        left: `${pct}%`,
+                        transform: "translate(-50%, -0%)",
                         background: thumbColor,
                         boxShadow:
                             "0 1px 4px rgba(0,0,0,0.5), 0 0 0 1.5px rgba(255,255,255,0.25)",
