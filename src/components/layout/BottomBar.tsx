@@ -8,7 +8,16 @@ import {
 } from "../../store/uiStore";
 import type { AppearanceMode } from "../../types/index";
 
-function GradientSlider({ value, min, max, trackGradient, thumbColor, onChange, onRelease, label }: {
+function GradientSlider({
+    value,
+    min,
+    max,
+    trackGradient,
+    thumbColor,
+    onChange,
+    onRelease,
+    label,
+}: {
     value: number;
     min: number;
     max: number;
@@ -21,14 +30,44 @@ function GradientSlider({ value, min, max, trackGradient, thumbColor, onChange, 
     const pct = max === min ? 0 : ((value - min) / (max - min)) * 100;
     return (
         <div className="tint-gradient-slider">
-            <label className="tint-gradient-label" htmlFor={`tint-${label.toLowerCase()}`}>{label}</label>
+            <label
+                className="tint-gradient-label"
+                htmlFor={`tint-${label.toLowerCase()}`}>
+                {label}
+            </label>
             <div className="relative h-8 flex items-center select-none rounded focus-within:outline-2 focus-within:outline-[#64a8ff]">
-                <div className="absolute left-0 right-0 h-[10px] rounded-full" style={{ background: trackGradient, boxShadow: "inset 0 1px 2px rgba(0,0,0,0.4)" }} />
-                <div className="absolute top-1/2 -translate-y-1/2 w-[14px] h-[14px] rounded-full pointer-events-none" style={{ left: `calc(${pct}% - 7px)`, background: thumbColor, boxShadow: "0 1px 4px rgba(0,0,0,0.5), 0 0 0 1.5px rgba(255,255,255,0.25)" }} />
-                <input id={`tint-${label.toLowerCase()}`} type="range" aria-label={`Tint ${label}`} min={min} max={max} value={value} onChange={e => onChange(Number(e.target.value))} onPointerUp={onRelease} onPointerCancel={onRelease} onKeyUp={onRelease} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div
+                    className="absolute left-0 right-0 h-[10px] rounded-full"
+                    style={{
+                        background: trackGradient,
+                        boxShadow: "inset 0 1px 2px rgba(0,0,0,0.4)",
+                    }}
+                />
+                <div
+                    className="absolute top-1/2 -translate-y-1/2 w-[14px] h-[14px] rounded-full pointer-events-none"
+                    style={{
+                        left: `calc(${pct}% - 7px)`,
+                        background: thumbColor,
+                        boxShadow:
+                            "0 1px 4px rgba(0,0,0,0.5), 0 0 0 1.5px rgba(255,255,255,0.25)",
+                    }}
+                />
+                <input
+                    id={`tint-${label.toLowerCase()}`}
+                    type="range"
+                    aria-label={`Tint ${label}`}
+                    min={min}
+                    max={max}
+                    value={value}
+                    onChange={e => onChange(Number(e.target.value))}
+                    onPointerUp={onRelease}
+                    onPointerCancel={onRelease}
+                    onKeyUp={onRelease}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
             </div>
-            <input className="tint-gradient-value" type="number" aria-label={`Tint ${label} value`} min={min} max={max} value={value} onChange={e => onChange(Number(e.target.value))} onBlur={e => onChange(Math.max(min, Math.min(max, Number(e.currentTarget.value) || 0)))} />
-            <span className="tint-gradient-unit">%</span>
+            {/* <input className="tint-gradient-value" type="number" aria-label={`Tint ${label} value`} min={min} max={max} value={value} onChange={e => onChange(Number(e.target.value))} onBlur={e => onChange(Math.max(min, Math.min(max, Number(e.currentTarget.value) || 0)))} /> */}
+            {/* <span className="tint-gradient-unit">%</span> */}
         </div>
     );
 }
