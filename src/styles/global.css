@@ -1758,7 +1758,7 @@ details[open] > .glass-group-summary svg {
 }
 
 /* Wide canvas: keep all three controls in one centered horizontal group. */
-@container icon-workspace (min-width: 960px) {
+@container icon-workspace (min-width: 7680px) {
     .canvas-controls {
         grid-template-columns: max-content 250px max-content;
         grid-template-areas: "appearance tint grid";
