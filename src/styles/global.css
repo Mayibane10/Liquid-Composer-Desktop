@@ -333,7 +333,7 @@ details[open] > .glass-group-summary svg {
 .editor-tabbar {
     display: none;
 }
-@media (max-width: 767px) {
+@media (max-width: 800px) {
     html {
         touch-action: manipulation;
         overscroll-behavior: none;
@@ -1555,7 +1555,7 @@ details[open] > .glass-group-summary svg {
         gap: 3px;
     }
 }
-@media (max-width: 767px) {
+@media (max-width: 800px) {
     .canvas-controls {
         align-items: stretch;
         gap: 6px;
@@ -1819,7 +1819,7 @@ details[open] > .glass-group-summary svg {
 .editor-tabbar {
     display: none;
 }
-@media (max-width: 767px) {
+@media (max-width: 800px) {
     html {
         touch-action: manipulation;
         overscroll-behavior: none;
@@ -1998,5 +1998,297 @@ details[open] > .glass-group-summary svg {
     }
     .editor-tabbar button[aria-pressed="true"] {
         color: #64a8ff;
+    }
+}
+
+/* ─────────────────────────────────────────
+   MOBILE OPTIMIZATION
+───────────────────────────────────────── */
+
+@media (max-width: 800px) {
+    /* Prevent viewport and scrolling issues */
+    html,
+    body,
+    #root {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .editor-app {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* Toolbar */
+    .editor-toolbar {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        flex: 0 0 auto;
+        min-height: 52px;
+        padding: 6px 10px;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+
+    .editor-document {
+        grid-column: 1;
+        justify-self: start;
+        width: auto;
+        min-width: 0;
+        flex: none;
+    }
+
+    .editor-document-name {
+        font-size: 12px;
+    }
+
+    .editor-toolbar-tools {
+        grid-column: 2;
+        justify-self: center;
+        display: flex;
+        flex: none;
+        width: auto;
+        min-width: 0;
+    }
+
+    .editor-toolbar-actions {
+        grid-column: 3;
+        justify-self: end;
+        width: auto;
+        flex: none;
+    }
+
+    .editor-tool-button,
+    .editor-export button {
+        min-height: 42px;
+    }
+
+    /* Main workspace */
+    .editor-workspace {
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .icon-workspace,
+    .layer-sidebar,
+    .inspector-panel {
+        min-width: 0;
+        min-height: 0;
+    }
+
+    /* Mobile panel navigation */
+    .editor-workspace:not([data-mobile-pane="canvas"]) > .icon-workspace,
+    .editor-workspace:not([data-mobile-pane="layers"]) > .layer-sidebar,
+    .editor-workspace:not([data-mobile-pane="inspector"]) > .inspector-panel {
+        display: none;
+    }
+
+    .layer-sidebar,
+    .inspector-panel {
+        width: 100%;
+        max-width: 100%;
+        flex: 1 1 auto;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+        margin: 0;
+    }
+
+    /* Independent panel scrolling */
+    .layer-sidebar {
+        overflow: hidden;
+    }
+
+    .layer-list,
+    .inspector-panel {
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .inspector-panel {
+        padding-bottom: 16px;
+    }
+
+    /* Larger touch targets */
+    .editor-icon-button,
+    .layer-action {
+        width: 44px;
+        height: 44px;
+    }
+
+    .layer-row {
+        min-height: 48px;
+    }
+
+    .layer-import button,
+    .layer-canvas-button,
+    .editor-menu-item {
+        min-height: 44px;
+    }
+
+    .glass-segments button,
+    .appearance-segments button {
+        min-height: 42px;
+    }
+
+    /* Sliders */
+    .glass-slider > .glass-slider-track {
+        height: 44px;
+    }
+
+    .glass-slider > .glass-slider-track > div:nth-child(2) {
+        width: 20px;
+        height: 20px;
+    }
+
+    input[type="range"] {
+        touch-action: pan-x;
+    }
+
+    /* Prevent iOS input zoom */
+    .inspector-panel input,
+    .inspector-panel select,
+    .inspector-panel textarea {
+        font-size: 16px;
+    }
+
+    /* Canvas controls: stack on narrow screens */
+    .canvas-controls {
+        left: 8px;
+        right: 8px;
+        bottom: 10px;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "appearance"
+            "tint"
+            "grid";
+        justify-items: stretch;
+        gap: 8px;
+    }
+
+    .canvas-controls .appearance-segments[aria-label="Icon appearance"] {
+        justify-self: center;
+        max-width: 100%;
+    }
+
+    .canvas-controls > .tint-controls {
+        width: 100%;
+        min-width: 0;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .canvas-controls .tint-gradient-slider {
+        flex: 1 1 120px;
+        min-width: 0;
+    }
+
+    .canvas-controls > .appearance-segments[aria-label="Icon grid"] {
+        justify-self: center;
+    }
+
+    /* Popovers */
+    .editor-background-popover {
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-width: calc(100vw - 16px);
+    }
+
+    .editor-popover {
+        max-width: calc(100vw - 16px);
+        left: auto;
+        right: auto;
+        align-self: auto;
+        width: min(260px, calc(100vw - 16px));
+        box-sizing: border-box;
+    }
+
+    /* Bottom navigation and safe areas */
+    .editor-tabbar {
+        flex: 0 0 auto;
+        min-height: 56px;
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+
+    .editor-tabbar button {
+        min-height: 52px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+    }
+    .editor-background-popover {
+        width: calc(400px - 16px);
+        max-width: auto;
+        box-sizing: border-box;
+    }
+
+    .editor-background-popover > * {
+        min-width: 0;
+    }
+
+    .editor-background-popover-content {
+        width: 100%;
+        min-width: 100%;
+    }
+}
+
+/* Extra-small phones */
+@media (max-width: 480px) {
+    .editor-toolbar {
+        padding-left: 7px;
+        padding-right: 7px;
+        gap: 5px;
+    }
+    .editor-background-popover-content {
+        width: 100%;
+        min-width: 100%;
+    }
+    .editor-platform-menu {
+        left: auto;
+        right: 0;
+        width: min(260px, calc(100vw - 16px));
+        max-width: calc(100vw - 16px);
+        box-sizing: border-box;
+    }
+
+    .editor-export-action {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .editor-document-name {
+        display: none;
+    }
+
+    .editor-export-options {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .canvas-controls {
+        left: 6px;
+        right: 6px;
+        gap: 6px;
+    }
+
+    .appearance-segments button {
+        padding-left: 9px;
+        padding-right: 9px;
     }
 }
