@@ -13,6 +13,20 @@
 
 <h3 align="center" > Thanks to <a href="https://github.com/frontedu"><b>@Frontedu</b> </a> For original Implementation</h3>
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=mayibane10%2Fliquid-composer-desktop&type=timeline&releases=&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=mayibane10/liquid-composer-desktop&type=timeline&theme=dark&legend=bottom-right" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=mayibane10/liquid-composer-desktop&type=timeline&legend=bottom-right" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=mayibane10/liquid-composer-desktop&type=timeline&legend=bottom-right" />
+ </picture>
+</a>
+
+---
+
+---
+
 Liquid Composer is a web app recreation of Apple's Icon Composer that reproduces the Liquid Glass icon material of iOS 27 and Icon Composer 2. Drop in your artwork, stack it in layers, and the engine renders the glass in real time: light from above, highlights and dark edges that define each shape, refraction between layers, background blur, translucency and layer shadows, composited inside the iOS squircle.
 
 Rendering runs on a WebGL2 pipeline. A distance field of each layer's silhouette drives refraction and edge lighting; when Blur is on, two separable Gaussian passes blur everything beneath the layer, and the glass composite shader works in gamma-encoded sRGB, like Icon Composer. Without WebGL2 the app falls back to Canvas 2D: layers keep their shadow, translucency and edge lighting, but lose refraction and blur.
