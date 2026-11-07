@@ -325,6 +325,10 @@ export function TopToolbar() {
                     />
                 ) : (
                     <button
+                        onClick={() => {
+                            setNameInput(name);
+                            setEditingName(true);
+                        }}
                         onDoubleClick={() => {
                             setNameInput(name);
                             setEditingName(true);
@@ -336,7 +340,8 @@ export function TopToolbar() {
                                 setEditingName(true);
                             }
                         }}
-                        title="Double-click to rename"
+                        title="Click to rename"
+                        aria-label={`Rename document: ${name}`}
                         className="editor-document-name">
                         {name}
                     </button>

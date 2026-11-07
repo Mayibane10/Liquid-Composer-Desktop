@@ -1,7 +1,7 @@
 {
     "name": "liquid-composer",
     "type": "module",
-    "version": "2.1.0RC",
+    "version": "2.1.0RC2",
     "bin": {
         "liquid-composer": "scripts/agent/cli.mjs"
     },
