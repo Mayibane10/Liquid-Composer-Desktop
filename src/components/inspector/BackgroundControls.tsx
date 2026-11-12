@@ -162,6 +162,9 @@ export function BackgroundControls() {
     const [lightAngle, setLightAngle] = useState(storeLightAngle);
     const [lightIntensity, setLightIntensity] = useState(storeLightIntensity);
     const [gradientAngle, setGradientAngle] = useState(storeGradientAngle);
+    const [gradientType, setGradientType] = useState<"linear" | "radial">(
+        bg.gradientType ?? "linear",
+    );
     const [stopPositions, setStopPositions] = useState(
         localStops.map(stop => Math.round(stop.offset * 100)),
     );
@@ -179,6 +182,7 @@ export function BackgroundControls() {
         lightAngle: storeLightAngle,
         lightIntensity: storeLightIntensity,
         gradientAngle: storeGradientAngle,
+        gradientType: bg.gradientType ?? "linear",
     });
 
     const rafRef = useRef(0);
@@ -188,6 +192,7 @@ export function BackgroundControls() {
         const common = {
             lightAngle: v.lightAngle,
             lightIntensity: v.lightIntensity,
+            gradientType: v.gradientType,
         };
         if (v.type === "custom") {
             updateBackground({
@@ -239,6 +244,7 @@ export function BackgroundControls() {
         setLightAngle(storeLightAngle);
         setLightIntensity(storeLightIntensity);
         setGradientAngle(storeGradientAngle);
+        setGradientType(bg.gradientType ?? "linear");
         bgValuesRef.current = {
             type: storeBgType,
             stops: storeStops,
@@ -248,6 +254,7 @@ export function BackgroundControls() {
             lightAngle: storeLightAngle,
             lightIntensity: storeLightIntensity,
             gradientAngle: storeGradientAngle,
+            gradientType: bg.gradientType ?? "linear",
         };
     }, [bg]);
 
@@ -387,6 +394,12 @@ export function BackgroundControls() {
         scheduleUpdate();
     };
 
+    const updateGradientType = (type: "linear" | "radial") => {
+        setGradientType(type);
+        bgValuesRef.current = { ...bgValuesRef.current, gradientType: type };
+        scheduleUpdate();
+    };
+
     const sat = Math.round(85 * (1 - tint / 100));
     const l1cur = Math.min(
         100,
@@ -401,13 +414,17 @@ export function BackgroundControls() {
     const brightTrack = `linear-gradient(to right, #000, hsl(${hue},${sat}%,${Math.min(100, 48 + tint * 0.52)}%))`;
     const currentHue = `hsl(${hue},100%,50%)`;
     const currentTint = `hsl(${hue},${sat}%,${l1cur}%)`;
-    const bgPreview =
+    const previewColors =
         localBgType === "custom"
-            ? `linear-gradient(135deg, ${[...localStops]
+            ? [...localStops]
                   .sort((a, b) => a.offset - b.offset)
-                  .map(s => s.color)
-                  .join(", ")})`
-            : `linear-gradient(135deg, ${bgColorsFromHueTint(hue, tint, brightness).join(", ")})`;
+                  .map(s => `${s.color} ${s.offset * 100}%`)
+                  .join(", ")
+            : bgColorsFromHueTint(hue, tint, brightness).join(", ");
+    const bgPreview =
+        gradientType === "radial"
+            ? `radial-gradient(circle, ${previewColors})`
+            : `linear-gradient(135deg, ${previewColors})`;
 
     const previewLightAlpha =
         (Math.max(0, Math.min(100, lightIntensity)) / 100) * 0.48;
@@ -420,6 +437,23 @@ export function BackgroundControls() {
 
     return (
         <div>
+            <div className="px-4 pt-3 flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-white/35">
+                    Gradient style
+                </span>
+                <div className="ml-auto flex rounded-md bg-white/[0.06] p-0.5">
+                    {(["linear", "radial"] as const).map(type => (
+                        <button
+                            key={type}
+                            type="button"
+                            aria-pressed={gradientType === type}
+                            onClick={() => updateGradientType(type)}
+                            className={`rounded px-2.5 py-1 text-[10px] font-medium transition-colors ${gradientType === type ? "bg-[#0a84ff] text-white" : "text-white/55 hover:text-white"}`}>
+                            {type === "linear" ? "Linear" : "Radial"}
+                        </button>
+                    ))}
+                </div>
+            </div>
             <div className="flex border-b border-white/[0.06]">
                 {(["preset", "custom"] as const).map(type => (
                     <button
@@ -620,17 +654,19 @@ export function BackgroundControls() {
                         </div>
                     </div>
                     <div className="border-t border-white/[0.08] pt-3 space-y-2">
-                        <Slider
-                            label="Gradient orientation"
-                            ariaLabel="Gradient orientation"
-                            min={0}
-                            max={359}
-                            step={1}
-                            value={gradientAngle}
-                            onChange={updateGradientAngle}
-                            unit="°"
-                            layout="stacked"
-                        />
+                        {gradientType === "linear" && (
+                            <Slider
+                                label="Gradient orientation"
+                                ariaLabel="Gradient orientation"
+                                min={0}
+                                max={359}
+                                step={1}
+                                value={gradientAngle}
+                                onChange={updateGradientAngle}
+                                unit="°"
+                                layout="stacked"
+                            />
+                        )}
                         <span
                             className="text-[10px] font-semibold uppercase tracking-widest block"
                             style={{ color: "rgba(255,255,255,0.45)" }}>

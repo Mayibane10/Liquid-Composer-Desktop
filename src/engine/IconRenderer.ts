@@ -880,7 +880,17 @@ async function buildContentCanvas(
                 layer.fill.type === "gradient" &&
                 "stops" in layer.fill
             ) {
-                const grad = ctx.createLinearGradient(0, 0, 0, size);
+                const grad =
+                    layer.fill.gradientType === "radial"
+                        ? ctx.createRadialGradient(
+                              size / 2,
+                              size / 2,
+                              0,
+                              size / 2,
+                              size / 2,
+                              size * Math.SQRT1_2,
+                          )
+                        : ctx.createLinearGradient(0, 0, 0, size);
                 layer.fill.stops.forEach(s =>
                     grad.addColorStop(s.offset, s.color),
                 );
@@ -897,7 +907,17 @@ async function buildContentCanvas(
             ctx.fillStyle = layer.fill.color ?? "#ffffff";
             ctx.fillRect(0, 0, size, size);
         } else if (layer.fill.type === "gradient" && "stops" in layer.fill) {
-            const grad = ctx.createLinearGradient(0, 0, 0, size);
+            const grad =
+                layer.fill.gradientType === "radial"
+                    ? ctx.createRadialGradient(
+                          size / 2,
+                          size / 2,
+                          0,
+                          size / 2,
+                          size / 2,
+                          size * Math.SQRT1_2,
+                      )
+                    : ctx.createLinearGradient(0, 0, 0, size);
             layer.fill.stops.forEach(s => grad.addColorStop(s.offset, s.color));
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, size, size);
@@ -1017,9 +1037,14 @@ function composeClear(
     c.globalCompositeOperation = "source-over";
 }
 
-function applyTintAppearance(c: CanvasRenderingContext2D, size: number, dark: boolean, tint: string): void {
+function applyTintAppearance(
+    c: CanvasRenderingContext2D,
+    size: number,
+    dark: boolean,
+    tint: string,
+): void {
     c.save();
-    c.globalCompositeOperation = 'color';
+    c.globalCompositeOperation = "color";
     c.fillStyle = tint;
     // Full-strength color blending replaces the artwork hue/saturation while
     // preserving its luminance, which is how Apple's tinted appearance keeps
@@ -1079,7 +1104,10 @@ async function renderLayerToCanvas(
         layer.fill.type === "solid"
             ? layer.fill.color
             : layer.fill.type === "gradient"
-              ? JSON.stringify(layer.fill.stops)
+              ? JSON.stringify({
+                    stops: layer.fill.stops,
+                    gradientType: layer.fill.gradientType,
+                })
               : "";
     const tintKey = `${layer.id}:${mode}:${layer.blobUrl ?? ""}:${layer.fill.type}:${fillKey}:${adaptBg?.key ?? ""}`;
 
@@ -1279,7 +1307,8 @@ async function renderIconToCanvasImpl(
     const { layers, background, lightAngle, appearanceMode, size } = ctx;
     const isClear =
         appearanceMode === "clear" || appearanceMode === "clearDark";
-    const isDarkAppearance = appearanceMode === "dark" || appearanceMode === "tintedDark";
+    const isDarkAppearance =
+        appearanceMode === "dark" || appearanceMode === "tintedDark";
 
     const renderer = getWebGLRenderer(size);
     if (renderer) setWebgl2Status("active");
@@ -1309,8 +1338,9 @@ async function renderIconToCanvasImpl(
     );
     const { canvas: glassBgCanvas, key: glassBgKey } = bgEntry;
     const iconBright = backgroundLuma(bgEntry) >= CHICLET_LUMINANCE.minBright;
-    const lightBg =
-        isDarkAppearance ? getCachedBgCanvas(background, size) : null;
+    const lightBg = isDarkAppearance
+        ? getCachedBgCanvas(background, size)
+        : null;
     const lightBgAvg = lightBg && averageColor(lightBg.canvas);
     const adaptBg =
         lightBgAvg && hslLightness(lightBgAvg) >= DARK_ADAPT_BG_MIN
@@ -1498,7 +1528,8 @@ async function renderIconToCanvasImpl(
             : getChicletHighlights(
                   watchHighlights
                       ? CHICLET_WATCH_HIGHLIGHTS
-                      : appearanceMode === "dark" || appearanceMode === "tintedDark"
+                      : appearanceMode === "dark" ||
+                          appearanceMode === "tintedDark"
                         ? CHICLET_DARK_HIGHLIGHTS
                         : CHICLET_HIGHLIGHTS,
                   "#ffffff",
@@ -1524,8 +1555,10 @@ async function renderIconToCanvasImpl(
                 : MITIGATED.clearDark,
         );
 
-    if (appearanceMode === "tintedLight") applyTintAppearance(c, size, false, ctx.appearanceTint ?? "#9b8bb3");
-    if (appearanceMode === "tintedDark") applyTintAppearance(c, size, true, ctx.appearanceTint ?? "#806099");
+    if (appearanceMode === "tintedLight")
+        applyTintAppearance(c, size, false, ctx.appearanceTint ?? "#9b8bb3");
+    if (appearanceMode === "tintedDark")
+        applyTintAppearance(c, size, true, ctx.appearanceTint ?? "#806099");
 
     // ── Squircle mask, after the highlights so the subtractive pass sees opaque pixels ──
     if (!bare) {
@@ -1749,7 +1782,13 @@ function canvasToBlob(
         ctx.save();
         ctx.globalCompositeOperation = "destination-in";
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, 0, Math.PI * 2);
+        ctx.arc(
+            canvas.width / 2,
+            canvas.height / 2,
+            canvas.width / 2,
+            0,
+            Math.PI * 2,
+        );
         ctx.fill();
         ctx.restore();
     }
@@ -1776,7 +1815,10 @@ export async function exportIcon(
     background: RenderContext["background"],
     lightAngle: number,
     mode: AppearanceMode,
-    { format, size, bare, platform, appearanceTint }: ExportOptions = { format: "png", size: 1024 },
+    { format, size, bare, platform, appearanceTint }: ExportOptions = {
+        format: "png",
+        size: 1024,
+    },
 ): Promise<Blob> {
     const renderSize = Math.max(size, Math.min(2048, Math.max(1024, size * 2)));
     try {
@@ -1854,14 +1896,24 @@ export async function exportZip(
 
 /** A ready-to-import set of default PNG renditions for every Apple platform. */
 export async function exportPlatformZip(
-    layers: RenderContext['layers'],
-    background: RenderContext['background'],
+    layers: RenderContext["layers"],
+    background: RenderContext["background"],
     lightAngle: number,
 ): Promise<Blob> {
     const files: Record<string, Uint8Array> = {};
     for (const platform of PLATFORM_PROFILES) {
-        const blob = await exportIcon(layersForPlatform(layers, platform.id), background, lightAngle, 'default', { format: 'png', size: 1024, platform: platform.id });
-        files[`${platform.label}/icon-1024.png`] = new Uint8Array(await blob.arrayBuffer());
+        const blob = await exportIcon(
+            layersForPlatform(layers, platform.id),
+            background,
+            lightAngle,
+            "default",
+            { format: "png", size: 1024, platform: platform.id },
+        );
+        files[`${platform.label}/icon-1024.png`] = new Uint8Array(
+            await blob.arrayBuffer(),
+        );
     }
-    return new Blob([zipSync(files, { level: 0 }) as Uint8Array<ArrayBuffer>], { type: 'application/zip' });
+    return new Blob([zipSync(files, { level: 0 }) as Uint8Array<ArrayBuffer>], {
+        type: "application/zip",
+    });
 }

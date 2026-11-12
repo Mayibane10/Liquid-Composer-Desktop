@@ -115,6 +115,7 @@ export function ColorSection() {
                 type: "gradient",
                 stops: debouncedStops,
                 angle: layer.fill.angle,
+                gradientType: layer.fill.gradientType ?? "linear",
             });
         }
     }, [debouncedStops]);
@@ -186,6 +187,7 @@ export function ColorSection() {
                                         type: "gradient",
                                         stops: initialStops,
                                         angle: 90,
+                                        gradientType: "linear",
                                     });
                                 }
                             }}
@@ -220,10 +222,35 @@ export function ColorSection() {
 
                     {fill.type === "gradient" && "stops" in fill && (
                         <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-[#636366] w-16 shrink-0">
+                                    Style
+                                </span>
+                                <Select
+                                    ariaLabel="Gradient style"
+                                    value={fill.gradientType ?? "linear"}
+                                    onChange={v =>
+                                        updateLayerFill(layer.id, {
+                                            ...fill,
+                                            gradientType: v as
+                                                | "linear"
+                                                | "radial",
+                                        })
+                                    }
+                                    options={[
+                                        { value: "linear", label: "Linear" },
+                                        { value: "radial", label: "Radial" },
+                                    ]}
+                                    className="flex-1"
+                                />
+                            </div>
                             <div
                                 className="w-full h-4 rounded-md"
                                 style={{
-                                    background: `linear-gradient(90deg, ${localStops[0]?.color ?? "#fff"}, ${localStops[1]?.color ?? "#000"})`,
+                                    background:
+                                        fill.gradientType === "radial"
+                                            ? `radial-gradient(circle, ${localStops.map(s => `${s.color} ${s.offset * 100}%`).join(", ")})`
+                                            : `linear-gradient(90deg, ${localStops.map(s => `${s.color} ${s.offset * 100}%`).join(", ")})`,
                                 }}
                             />
                             {[0, 1].map(i => {
