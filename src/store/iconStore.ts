@@ -28,7 +28,7 @@ function defaultLiquidGlass(): LiquidGlassConfig {
         translucency: { enabled: true, value: 50 },
         translucencyGradient: {
             enabled: false,
-            angle: 270,
+            angle: 90,
             start: 0,
             end: 100,
             startOpacity: 100,
@@ -123,7 +123,7 @@ export function defaultBackground(): BackgroundConfig {
             { offset: 0, color: top },
             { offset: 1, color: bottom },
         ],
-        angle: 270,
+        angle: 90,
     };
 }
 
