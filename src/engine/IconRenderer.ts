@@ -1560,18 +1560,18 @@ async function renderIconToCanvasImpl(
     if (appearanceMode === "tintedDark")
         applyTintAppearance(c, size, true, ctx.appearanceTint ?? "#806099");
 
-    // ── Squircle mask, after the highlights so the subtractive pass sees opaque pixels ──
+    // ── Platform mask, after highlights so the subtractive pass sees opaque pixels ──
     if (!bare) {
         c.globalCompositeOperation = "destination-in";
-        c.fill(squirclePath(size));
+        c.fill(iconSilhouettePath(size, ctx.platform === "watchos"));
         c.globalCompositeOperation = "source-over";
     }
 
-    // ── Soft edge feather — erases 1-2px outside squircle to anti-alias the clip ──
+    // ── Soft edge feather — erases 1-2px outside the silhouette to anti-alias the clip ──
     if (!bare) {
         c.save();
         c.globalCompositeOperation = "destination-out";
-        c.drawImage(getFeatherMask(size), 0, 0);
+        c.drawImage(getFeatherMask(size, ctx.platform === "watchos"), 0, 0);
         c.restore();
     }
 
@@ -1607,7 +1607,9 @@ function drawChicletBand(
         ctx.lineWidth = (2 * j * h) / rings;
         if (circle) {
             ctx.beginPath();
-            ctx.arc(size / 2, size / 2, size / 2 - h, 0, Math.PI * 2);
+            // Center the highlight on the actual circular perimeter. The
+            // previous inset radius left a visible dark gap at the edge.
+            ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
             ctx.stroke();
         } else {
             ctx.stroke(squirclePath(size));
@@ -1692,16 +1694,25 @@ function getChicletHighlights(
 }
 
 let featherMask: HTMLCanvasElement | null = null;
+let featherMaskIsCircle = false;
 
-function getFeatherMask(size: number): HTMLCanvasElement {
-    if (featherMask?.width === size) return featherMask;
+function iconSilhouettePath(size: number, circle: boolean): Path2D {
+    if (!circle) return squirclePath(size);
+    const path = new Path2D();
+    path.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+    return path;
+}
+
+function getFeatherMask(size: number, circle = false): HTMLCanvasElement {
+    if (featherMask?.width === size && featherMaskIsCircle === circle)
+        return featherMask;
     const outside = document.createElement("canvas");
     outside.width = outside.height = size;
     const oc = outside.getContext("2d")!;
     oc.fillStyle = "#000000";
     oc.fillRect(0, 0, size, size);
     oc.globalCompositeOperation = "destination-out";
-    oc.fill(squirclePath(size));
+    oc.fill(iconSilhouettePath(size, circle));
 
     const featherPx = 1.2;
     const mask = featherMask ?? document.createElement("canvas");
@@ -1710,6 +1721,7 @@ function getFeatherMask(size: number): HTMLCanvasElement {
     mc.filter = `blur(${featherPx}px)`;
     mc.drawImage(outside, 0, 0);
     featherMask = mask;
+    featherMaskIsCircle = circle;
     return mask;
 }
 

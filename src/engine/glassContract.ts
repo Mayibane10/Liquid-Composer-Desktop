@@ -181,10 +181,14 @@ export const CHICLET_DARK_HIGHLIGHTS = [
     },
 ] as const;
 export const CHICLET_WATCH_HIGHLIGHTS = [
-  { distance: 14, spreadDeg: 120, bias: 0.5, angleFromKey: 0,            opacity: 0.17, dark: false },
-  { distance: 14, spreadDeg: 120, bias: 0.5, angleFromKey: Math.PI,      opacity: 0.12, dark: false },
-  { distance: 14, spreadDeg: 75,  bias: 0.5, angleFromKey: Math.PI / 2,  opacity: 0.10, dark: true },
-  { distance: 14, spreadDeg: 75,  bias: 0.5, angleFromKey: -Math.PI / 2, opacity: 0.10, dark: true },
+  // Circular watch backgrounds need a crisp inner rim and broad falloff,
+  // matching the layered glass edge used on the square icon background.
+  { distance: 10, spreadDeg: 120, bias: 0.5, angleFromKey: 0, opacity: 0.2, dark: false },
+  { distance: 40, spreadDeg: 90, bias: 0.08, angleFromKey: 0, opacity: 0.5, dark: false },
+  { distance: 10, spreadDeg: 120, bias: 0.5, angleFromKey: Math.PI, opacity: 0.2, dark: false },
+  { distance: 40, spreadDeg: 90, bias: 0.08, angleFromKey: Math.PI, opacity: 0.25, dark: false },
+  { distance: 10, spreadDeg: 60, bias: 0.5, angleFromKey: Math.PI / 2, opacity: 0.2, dark: true },
+  { distance: 10, spreadDeg: 60, bias: 0.5, angleFromKey: -Math.PI / 2, opacity: 0.2, dark: true },
 ] as const;
 export const CHICLET_CLEAR_HIGHLIGHTS = [
     {
