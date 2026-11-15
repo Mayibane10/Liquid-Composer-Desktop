@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '@nanostores/react';
-import { ArrowRight, Circle, Diamond, Heart, Hexagon, Magnet, Plus, Rectangle, Shapes, Star, Triangle, UploadSimple } from '@phosphor-icons/react';
+import { Circle, Diamond, Hexagon, Magnet, Minus, Plus, Rectangle, Shapes, Star, Triangle, UploadSimple } from '@phosphor-icons/react';
 import { addLayer } from '../../store/iconStore';
 import { $snapEnabled } from '../../store/uiStore';
-import symbols8FontUrl from '../../assets/fonts/Symbols-8.ttf?url';
+import customSymbolsFontUrl from '../../assets/fonts/Custom-SF-Symbols.ttf?url';
 
 const PAGE_SIZE = 56;
-// Symbols-8 cmap contains U+0000..U+0204 and U+E900..U+FFFE.
+// Keep printable low codepoints first to match font viewers, then the PUA block;
+// control codepoints remain available at the end of the catalog.
 const SYMBOL_CODEPOINTS = [
+  ...Array.from({ length: 0x205 - 0x21 }, (_, index) => 0x21 + index),
   ...Array.from({ length: 0xfffe - 0xe900 + 1 }, (_, index) => 0xe900 + index),
-  ...Array.from({ length: 0x205 }, (_, index) => index),
+  ...Array.from({ length: 0x21 }, (_, index) => index),
 ];
 const BUILT_IN_SHAPES = [
   { name: 'Rectangle', icon: Rectangle, svg: '<rect x="192" y="192" width="640" height="640" rx="48"/>' },
@@ -20,9 +22,8 @@ const BUILT_IN_SHAPES = [
   { name: 'Diamond', icon: Diamond, svg: '<path d="M512 112 912 512 512 912 112 512z"/>' },
   { name: 'Hexagon', icon: Hexagon, svg: '<path d="M302 142h420l210 370-210 370H302L92 512z"/>' },
   { name: 'Star', icon: Star, svg: '<path d="m512 90 100 290h305L670 560l95 300-253-182-253 182 95-300L107 380h305z"/>' },
-  { name: 'Heart', icon: Heart, svg: '<path d="M512 880 155 531C-5 374 108 120 307 120c92 0 164 51 205 119 41-68 113-119 205-119 199 0 312 254 152 411z"/>' },
   { name: 'Plus', icon: Plus, svg: '<path d="M432 128h160v304h304v160H592v304H432V592H128V432h304z"/>' },
-  { name: 'Arrow', icon: ArrowRight, svg: '<path d="M512 120 904 512 512 904 400 792l200-200H120V432h480L400 232z"/>' },
+  { name: 'Line', icon: Minus, svg: '<path d="M192 512H832" fill="none" stroke="white" stroke-width="96" stroke-linecap="round"/>' },
 ];
 
 export function ShapeLibrary() {
@@ -90,13 +91,13 @@ export function ShapeLibrary() {
 
   useEffect(() => {
     let cancelled = false;
-    void new FontFace(`SymbolShapes-${Date.now()}`, `url("${symbols8FontUrl}")`).load()
+    void new FontFace(`SymbolShapes-${Date.now()}`, `url("${customSymbolsFontUrl}")`).load()
       .then(face => {
         if (cancelled) return;
-        installFont(face, null, 'Symbols-8');
+        installFont(face, null, 'Custom SF Symbols');
       })
       .catch(() => {
-        if (!cancelled) setFontError('The bundled Symbols-8 font could not be loaded.');
+        if (!cancelled) setFontError('The bundled custom SF Symbols font could not be loaded.');
       });
     return () => { cancelled = true; };
   }, []);
@@ -179,8 +180,8 @@ export function ShapeLibrary() {
             <Magnet size={16} /> Snap to center <span>{snapEnabled ? 'On' : 'Off'}</span>
           </button>
           <div className="shape-library-font">
-            <div className="shape-library-section-title">{fontName ?? 'Symbols-8'}</div>
-            <p>{fontName === 'Symbols-8' ? 'All 6,404 mapped characters are available. Search by codepoint or browse the glyph pages.' : 'The selected font stays local; selected glyphs become image layers.'}</p>
+            <div className="shape-library-section-title">{fontName ?? 'Custom SF Symbols'}</div>
+            <p>{fontName === 'Custom SF Symbols' ? 'All 6,404 mapped characters are available. Search by codepoint or browse the glyph pages.' : 'The selected font stays local; selected glyphs become image layers.'}</p>
             <button type="button" onClick={() => fileRef.current?.click()}>
               <UploadSimple size={16} /> Use another font
             </button>
@@ -193,15 +194,15 @@ export function ShapeLibrary() {
           </div>
           {fontFamily && <>
             <input className="shape-library-search" type="search" value={search} placeholder="Find by codepoint, e.g. E900" aria-label="Search SF Symbols glyphs" onChange={event => { setSearch(event.target.value); setPage(0); }} />
+            <div className="shape-library-pagination">
+              <button type="button" disabled={page === 0} onClick={() => setPage(value => value - 1)}>Previous</button>
+              <span>{matchingGlyphs.length ? `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, matchingGlyphs.length)} of ${matchingGlyphs.length}` : 'No matches'} · {pageCount ? page + 1 : 0}/{pageCount}</span>
+              <button type="button" disabled={page >= pageCount - 1} onClick={() => setPage(value => value + 1)}>Next</button>
+            </div>
             <div className="shape-library-grid" aria-label="SF Symbols glyphs">
               {visibleGlyphs.map(codepoint => <button key={codepoint} type="button" style={{ fontFamily }} title={`Add glyph U+${codepoint.toString(16).toUpperCase()}`} aria-label={`Add glyph U+${codepoint.toString(16).toUpperCase()}`} onClick={() => addFontGlyph(codepoint)}>
                 {String.fromCodePoint(codepoint)}<span>{codepoint.toString(16).toUpperCase()}</span>
               </button>)}
-            </div>
-            <div className="shape-library-pagination">
-              <button type="button" disabled={page === 0} onClick={() => setPage(value => value - 1)}>Previous</button>
-              <span>{pageCount ? page + 1 : 0} / {pageCount}</span>
-              <button type="button" disabled={page >= pageCount - 1} onClick={() => setPage(value => value + 1)}>Next</button>
             </div>
           </>}
         </div>,
