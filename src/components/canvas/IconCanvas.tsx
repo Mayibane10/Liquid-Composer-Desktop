@@ -23,6 +23,7 @@ import {
     $webgl2Restores,
     $showGrid,
     $gridStyle,
+    $snapEnabled,
     $iconPlatform,
     $tintHue,
     $tintSaturation,
@@ -165,6 +166,7 @@ export function IconCanvas() {
     const webgl2Restores = useStore($webgl2Restores);
     const showGrid = useStore($showGrid);
     const gridStyle = useStore($gridStyle);
+    const snapEnabled = useStore($snapEnabled);
     const platform = useStore($iconPlatform);
     const tintHue = useStore($tintHue);
     const tintSaturation = useStore($tintSaturation);
@@ -534,8 +536,8 @@ export function IconCanvas() {
             let newX = ds.origX + dx;
             let newY = ds.origY + dy;
 
-            const snapX = Math.abs(newX) < (SNAP_THRESHOLD / iconSize) * 100;
-            const snapY = Math.abs(newY) < (SNAP_THRESHOLD / iconSize) * 100;
+            const snapX = snapEnabled && Math.abs(newX) < (SNAP_THRESHOLD / iconSize) * 100;
+            const snapY = snapEnabled && Math.abs(newY) < (SNAP_THRESHOLD / iconSize) * 100;
             if (snapX) newX = 0;
             if (snapY) newY = 0;
 
@@ -572,7 +574,7 @@ export function IconCanvas() {
                 });
             }
         },
-        [effectiveLayers, iconSize],
+        [effectiveLayers, iconSize, snapEnabled],
     );
 
     const handleCanvasPointerUp = useCallback(() => {

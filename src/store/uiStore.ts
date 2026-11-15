@@ -29,6 +29,7 @@ export const $showBackgroundPicker = atom<boolean>(false);
 export const $persistenceEnabled = atom<boolean>(true);
 export const $showAdvancedGlass = atom<boolean>(false);
 export const $showGrid = atom<boolean>(false);
+export const $snapEnabled = atom<boolean>(true);
 export const $gridStyle = atom<'light' | 'dark'>('light');
 export const $iconPlatform = atom<IconPlatform>('ios');
 export const MOBILE_QUERY = '(max-width: 767px)';

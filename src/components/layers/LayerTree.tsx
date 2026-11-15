@@ -22,6 +22,7 @@ import { $persistenceEnabled, $selectedLayerId, $showGrid, selectLayer, inspectL
 import { clearPersistence } from '../../store/persistence';
 import { $fileDropZone, addImageFiles, imageFiles } from '../useFileDrop';
 import { LayerItem } from './LayerItem';
+import { ShapeLibrary } from './ShapeLibrary';
 import { useLayerDrag, LAYER_INDENT } from './useLayerDrag';
 import { Toggle } from '../ui/Toggle';
 import type { Layer } from '../../types/index';
@@ -253,6 +254,7 @@ export function LayerTree() {
         <span className="font-semibold">Layers</span>
         <div className="flex items-center">
           <SettingsDropdown />
+          <ShapeLibrary />
           <button
             onClick={addGroup}
             title="Add group"
