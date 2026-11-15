@@ -176,12 +176,12 @@ export function IconCanvas() {
     const [fitSize, setFitSize] = useState<number | null>(null);
     const effectiveLayers = layersForPlatform(layers, platform);
     const profile = platformProfile(platform);
-    const previewRadius =
-        profile.previewClass === "watchos"
-            ? "50%"
-            : profile.previewClass === "macos"
-              ? "22%"
-              : "26%";
+    // const previewRadius =
+    //     profile.previewClass === "watchos"
+    //         ? "50%"
+    //         : profile.previewClass === "macos"
+    //           ? "22%"
+    //           : "26%";
     const [snapGuide, setSnapGuide] = useState<{ x: boolean; y: boolean }>({
         x: false,
         y: false,
@@ -212,8 +212,43 @@ export function IconCanvas() {
     );
 
     const outlineImgRef = useRef<HTMLImageElement>(null);
+    const transitionCanvasRef = useRef<HTMLCanvasElement>(null);
     const renderingRef = useRef(false);
     const pendingRef = useRef<(() => void) | null>(null);
+    const previousPlatformRef = useRef(platform);
+    const [transitionOverlayVisible, setTransitionOverlayVisible] =
+        useState(false);
+
+    // Preserve the last completed frame before the platform render effect runs.
+    // This is a cheap 2D canvas copy and does not invoke WebGL a second time.
+    useLayoutEffect(() => {
+        const previousPlatform = previousPlatformRef.current;
+        previousPlatformRef.current = platform;
+        if (previousPlatform === platform) return;
+
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            setTransitionOverlayVisible(false);
+            return;
+        }
+
+        const source = canvasRef.current;
+        const snapshot = transitionCanvasRef.current;
+        if (!source || !snapshot) return;
+
+        if (
+            snapshot.width !== source.width ||
+            snapshot.height !== source.height
+        ) {
+            snapshot.width = source.width;
+            snapshot.height = source.height;
+        }
+
+        const snapshotContext = snapshot.getContext("2d");
+        if (!snapshotContext) return;
+        snapshotContext.clearRect(0, 0, snapshot.width, snapshot.height);
+        snapshotContext.drawImage(source, 0, 0);
+        setTransitionOverlayVisible(true);
+    }, [platform]);
 
     useLayoutEffect(() => {
         const el = workspaceRef.current;
@@ -268,6 +303,8 @@ export function IconCanvas() {
                         const next = pendingRef.current;
                         pendingRef.current = null;
                         next();
+                    } else {
+                        setTransitionOverlayVisible(false);
                     }
                 });
         };
@@ -536,8 +573,12 @@ export function IconCanvas() {
             let newX = ds.origX + dx;
             let newY = ds.origY + dy;
 
-            const snapX = snapEnabled && Math.abs(newX) < (SNAP_THRESHOLD / iconSize) * 100;
-            const snapY = snapEnabled && Math.abs(newY) < (SNAP_THRESHOLD / iconSize) * 100;
+            const snapX =
+                snapEnabled &&
+                Math.abs(newX) < (SNAP_THRESHOLD / iconSize) * 100;
+            const snapY =
+                snapEnabled &&
+                Math.abs(newY) < (SNAP_THRESHOLD / iconSize) * 100;
             if (snapX) newX = 0;
             if (snapY) newY = 0;
 
@@ -661,6 +702,13 @@ export function IconCanvas() {
                     if (!dragState.current) $hoveredLayerId.set(null);
                 }}>
                 <canvas
+                    ref={transitionCanvasRef}
+                    width={renderSize}
+                    height={renderSize}
+                    aria-hidden="true"
+                    className={`platform-transition-overlay${transitionOverlayVisible ? " is-visible" : ""}`}
+                />
+                <canvas
                     ref={canvasRef}
                     width={renderSize}
                     height={renderSize}
@@ -669,7 +717,7 @@ export function IconCanvas() {
                         height: iconSize,
                         position: "relative",
                         zIndex: 1,
-                        borderRadius: previewRadius,
+                        // borderRadius: previewRadius,
                     }}
                     className="block"
                 />
