@@ -45,3 +45,5 @@ release/
 
 # Other
 backups/
+.freebuff/
+.cloud-attachments/
